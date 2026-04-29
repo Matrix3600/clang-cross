@@ -6,6 +6,8 @@ on:
     types:
       - published
 
+permissions: write-all
+
 jobs:
   build-llvm:
     name: Build LLVM
