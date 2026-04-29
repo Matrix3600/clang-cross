@@ -4,7 +4,7 @@ set -e
 
 CT_URL_GNU="https://github.com/cross-tools"
 CT_URL_MUSL="https://github.com/Matrix3600"
-CT_VER_GNU=20250929
+CT_VER_GNU=20260418
 CT_VER_MUSL=20260429
 LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 
