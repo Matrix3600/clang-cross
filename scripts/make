@@ -83,6 +83,10 @@ build_target() {
 			exec "\${BINDIR}/${n##*:}" --target=\${TARGET} --sysroot=\${BINDIR}/../\${TARGET}/sysroot ${CLANG_ARGS} "\$@"
 		EOF
 		chmod +x /opt/clang-cross/bin/${TARGET}-${n%%:*}
+		cat > /opt/clang-cross/bin/${n##*:}.cfg <<-EOF
+--sysroot=<CFGDIR>/../${TARGET}/sysroot
+--target=${TARGET}
+		EOF
 	done
 	ln -sf ${TARGET}-clang /opt/clang-cross/bin/${TARGET}-cc
 	ln -sf ${TARGET}-clang++ /opt/clang-cross/bin/${TARGET}-c++
