@@ -53,7 +53,7 @@ This is a simple, lightweight project for making cross-compilation toolchain wit
 
 ## How to use
 
-Download the tarball from the [release page](https://github.com/cross-tools/clang-cross/releases) and extract it to `/opt/x-tools`:
+Download the tarball from the [release page](https://github.com/Matrix3600/clang-cross/releases) and extract it to `/opt/x-tools`:
 
 ```sh
 sudo mkdir -p /opt/x-tools
