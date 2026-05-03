@@ -9,7 +9,7 @@ on:
 jobs:
   build-llvm:
     name: Build LLVM
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -30,7 +30,7 @@ jobs:
 
   build-targets:
     name: Build Targets
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs:
       - build-llvm
     strategy:
@@ -112,7 +112,7 @@ jobs:
 
   release:
     name: Release
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     needs:
