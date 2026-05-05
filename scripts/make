@@ -117,5 +117,3 @@ fi
 if [ "${1}" != "llvm" ]; then
 	build_target ${1}
 fi
-
-# vim: set ts=4 sw=4 noexpandtab:
