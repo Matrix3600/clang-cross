@@ -58,6 +58,7 @@ Download the tarball from the [release page](https://github.com/Matrix3600/clang
 ```sh
 sudo mkdir -p /opt/x-tools
 sudo tar -xf ${target}.tar.xz -C /opt/x-tools
+export PATH="/opt/x-tools/${target}/bin:$PATH"
 ```
 
 ## How to build
