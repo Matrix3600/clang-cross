@@ -104,8 +104,8 @@ build_target() {
 	rm -rf ${TARGET}
 	sudo mv /opt/clang-cross ${TARGET}
 	sudo chown -R root:root ${TARGET}
-	sudo tar -cJvf ${TARGET}.tar.xz ${TARGET}
-	sudo sha256sum ${TARGET}.tar.xz | awk '{ print $1 }' > ${TARGET}.tar.xz.sha256
+	sudo tar -cJvf clang-${TARGET}.tar.xz ${TARGET}
+	sudo sha256sum clang-${TARGET}.tar.xz | awk '{ print $1 }' > clang-${TARGET}.tar.xz.sha256
 }
 
 install_packages

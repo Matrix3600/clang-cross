@@ -1,10 +1,9 @@
 name: Release
 
 on:
-  workflow_dispatch:
-  release:
-    types:
-      - published
+  push:
+    tags:
+      - [0-9]+
 
 jobs:
   build-llvm:
@@ -98,15 +97,15 @@ jobs:
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ matrix.target }}.tar.xz
-          path: ${{ matrix.target }}.tar.xz
+          name: clang-${{ matrix.target }}.tar.xz
+          path: clang-${{ matrix.target }}.tar.xz
           if-no-files-found: error
           retention-days: 1
       - name: Upload checksum
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ matrix.target }}.tar.xz.sha256
-          path: ${{ matrix.target }}.tar.xz.sha256
+          name: clang-${{ matrix.target }}.tar.xz.sha256
+          path: clang-${{ matrix.target }}.tar.xz.sha256
           if-no-files-found: error
           retention-days: 1
 
@@ -127,20 +126,17 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           path: release
-          pattern: "*-*-*.tar.*"
+          pattern: "clang-*-*-*.tar.*"
           merge-multiple: true
-      - name: Generate checksums
-        run: |
-          echo "| Filename | Sha256sum |" > RELEASE.md
-          echo "| -------- | --------- |" >> RELEASE.md
-          for i in release/*.sha256; do
-            echo "| $(basename $i .sha256) | $(cat $i) |" >> RELEASE.md
-          done
-      - name: Upload artifacts
+      - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
         run: |
+          gh release create "$tag" \
+              --repo="$GITHUB_REPOSITORY" \
+              --title="$tag" \
+              --generate-notes --draft
           for i in release/*.tar.xz; do
-            gh release upload ${{ github.event.release.tag_name }} $i $i.sha256
+            gh release upload "$tag" $i $i.sha256
           done
-          gh release edit ${{ github.event.release.tag_name }} -F RELEASE.md
