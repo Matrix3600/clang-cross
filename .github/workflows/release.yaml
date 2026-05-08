@@ -3,7 +3,6 @@ name: Release
 on:
   push:
     tags:
-      - '[0-9]+'
 
 jobs:
   build-llvm:
@@ -116,7 +115,6 @@ jobs:
       contents: write
     needs:
       - build-targets
-    if: github.event_name == 'release'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -131,12 +129,16 @@ jobs:
       - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.ref_name }}
         run: |
-          gh release create "$tag" \
+          echo "GITHUB_EVENT_NAME: $GITHUB_EVENT_NAME"
+          echo "GITHUB_REF=$GITHUB_REF"
+          if [ "$(gh release view "$GITHUB_REF" 2>&1)" == "release not found" ]; then
+            echo Creating release...
+            gh release create "$GITHUB_REF" \
               --repo="$GITHUB_REPOSITORY" \
-              --title="$tag" \
+              --title="$GITHUB_REF" \
               --generate-notes --draft
+          fi
           for i in release/*.tar.xz; do
-            gh release upload "$tag" $i $i.sha256
+            gh release upload "$GITHUB_REF" $i $i.sha256
           done
