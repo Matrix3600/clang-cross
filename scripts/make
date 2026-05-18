@@ -4,7 +4,7 @@ set -e
 
 CT_URL_GNU="https://github.com/cross-tools"
 CT_URL_MUSL="https://github.com/Matrix3600"
-CT_VER_GNU=20260430
+CT_VER_GNU=20260515
 CT_VER_MUSL=20260515
 LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 
@@ -111,11 +111,12 @@ build_target()
 		chmod +x clang-cross/bin/${TARGET}-${n%%:*}
 	done
 	find clang-cross -exec chmod a-w {} \;
-	rm -rf ${TARGET}
+	sudo rm -rf ${TARGET}
 	mv clang-cross ${TARGET}
 	sudo chown -R root:root ${TARGET}
-	sudo tar -cJvf ../clang-${TARGET}.tar.xz ${TARGET}
-	sudo sha256sum ../clang-${TARGET}.tar.xz | awk '{ print $1 }' > ../clang-${TARGET}.tar.xz.sha256
+	name="clang-${TARGET}"
+	tar -cJvf ../${name}.tar.xz ${TARGET}
+	sha256sum ../${name}.tar.xz | awk '{ print $1 }' > ../${name}.tar.xz.sha256
 	popd
 	sudo rm -rf build
 }
