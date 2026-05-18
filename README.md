@@ -3,7 +3,7 @@
 This is a simple and lightweight project for making a cross-compilation
 toolchain with the Clang compiler, and the gnu or musl C library.
 
-The released toolchain (compiler) runs on Linux x86_64.
+The released toolchains (compilers) run on Linux x86_64.
 
 
 ## Supported targets
