@@ -25,7 +25,7 @@ jobs:
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
-          name: clang-cross.tar.xz
+          name: clang-cross
           path: clang-cross.tar.xz
           if-no-files-found: error
           retention-days: 1
@@ -88,26 +88,19 @@ jobs:
         with:
           fetch-depth: 1
           submodules: true
-      - name: Download
+      - name: Download clang-cross
         uses: actions/download-artifact@v8
         with:
-          name: clang-cross.tar.xz
+          name: clang-cross
       - name: Build
         run: |
           sudo rm -rf /opt/clang-cross
-          ./scripts/make ${{ matrix.target }}
+          ./scripts/make "${{ matrix.target }}"
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
-          name: clang-${{ matrix.target }}.tar.xz
-          path: clang-${{ matrix.target }}.tar.xz
-          if-no-files-found: error
-          retention-days: 1
-      - name: Upload checksum
-        uses: actions/upload-artifact@v7
-        with:
-          name: clang-${{ matrix.target }}.tar.xz.sha256
-          path: clang-${{ matrix.target }}.tar.xz.sha256
+          name: clang-${{ matrix.target }}
+          path: "clang-${{ matrix.target }}.tar.xz*"
           if-no-files-found: error
           retention-days: 1
 
@@ -123,11 +116,11 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 1
-      - name: Download artifacts
+      - name: Download packages
         uses: actions/download-artifact@v8
         with:
           path: release
-          pattern: "clang-*-*-*.tar.*"
+          pattern: "clang-*-*-*"
           merge-multiple: true
       - name: Create release
         env:
@@ -140,6 +133,6 @@ jobs:
               --title="$tag" \
               --generate-notes --draft
           fi
-          for i in release/*.tar.xz; do
-            gh release upload "$tag" $i $i.sha256
+          for name in release/*.tar.xz; do
+            gh release upload "$tag" "$name" "$name.sha256"
           done

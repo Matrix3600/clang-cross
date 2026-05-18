@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 
-set -e
+set -e -o pipefail
 
 CT_URL_GNU="https://github.com/cross-tools"
 CT_URL_MUSL="https://github.com/Matrix3600"
-CT_VER_GNU=20260430
+CT_VER_GNU=20260515
 CT_VER_MUSL=20260515
+
 LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 
 install_packages()
@@ -43,38 +44,38 @@ build_llvm()
 		-DLLVM_INSTALL_TOOLCHAIN_ONLY=ON
 	ninja install/strip
 	sudo chown -R root:root clang-cross
-	sudo tar -cJvf ../clang-cross.tar.xz clang-cross
+	tar -cJvf ../clang-cross.tar.xz clang-cross
 	popd
 	sudo rm -rf build-llvm
 }
 
 build_target()
 {
-	TARGET=$1
+	local TARGET="$1"
 	. targets/${TARGET}/config
 	sudo rm -rf build
 	mkdir build
 	pushd build
 	tar -xf ../clang-cross.tar.xz
 	sudo chown -R $(id -u):$(id -g) clang-cross
-	case ${TARGET} in
-		*gnu*)
-			URL="${CT_URL_GNU}/gnu-cross/releases/download/${CT_VER_GNU}/${TARGET}.tar.xz"
-			;;
-		*musl*)
-			URL="${CT_URL_MUSL}/musl-cross/releases/download/${CT_VER_MUSL}/${TARGET}.tar.xz"
-			;;
-	esac
 	sudo rm -rf ${TARGET}
 	if [ -f "../${TARGET}.tar.xz" ]; then
 		tar -xJf "../${TARGET}.tar.xz"
 	else
-		for n in {0..9}; do
-			if wget -O - "${URL}" | tar xJ; then
-				break
-			fi
-			sleep 5
-		done
+		local url=""
+		case ${TARGET} in
+			*-gnu)
+				url="${CT_URL_GNU}/gnu-cross/releases/download/${CT_VER_GNU}/${TARGET}.tar.xz"
+				;;
+			*-musl)
+				url="${CT_URL_MUSL}/musl-cross/releases/download/${CT_VER_MUSL}/${TARGET}.tar.xz"
+				;;
+			*)
+				echo "Target not supported (${TARGET})."
+				return 1
+				;;
+		esac
+		wget -O - -T 120 --tries=20 "$url" | tar xJ
 	fi
 	find ${TARGET} -exec chmod +w {} \;
 	cp -a ${TARGET}/include clang-cross/
@@ -111,22 +112,23 @@ build_target()
 		chmod +x clang-cross/bin/${TARGET}-${n%%:*}
 	done
 	find clang-cross -exec chmod a-w {} \;
-	rm -rf ${TARGET}
+	sudo rm -rf ${TARGET}
 	mv clang-cross ${TARGET}
 	sudo chown -R root:root ${TARGET}
-	sudo tar -cJvf ../clang-${TARGET}.tar.xz ${TARGET}
-	sudo sha256sum ../clang-${TARGET}.tar.xz | awk '{ print $1 }' > ../clang-${TARGET}.tar.xz.sha256
+	name="clang-${TARGET}"
+	tar -cJvf ../${name}.tar.xz ${TARGET}
+	sha256sum ../${name}.tar.xz | awk '{ print $1 }' > ../${name}.tar.xz.sha256
 	popd
 	sudo rm -rf build
 }
 
 if [ -z "$1" ]; then
-	echo "Target is missing."
+	echo "[ERROR] Target is missing."
 	exit 1
 fi
 
 if [[ $1 != "llvm" && ! -f "targets/$1/config" ]]; then
-	echo "Target not supported ($1)."
+	echo "[ERROR] Target not supported ($1)."
 	exit 1
 fi
 
