@@ -29,7 +29,7 @@ build_llvm()
 	mkdir build-llvm
 	pushd build-llvm
 	cmake -G Ninja -S ../llvm/llvm \
-		-DLLVM_ENABLE_PROJECTS="clang;lld" \
+		-DLLVM_ENABLE_PROJECTS="clang;compiler-rt;lld" \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_INSTALL_PREFIX=clang-cross \
 		-DCLANG_DEFAULT_LINKER=lld \
