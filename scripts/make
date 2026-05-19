@@ -7,7 +7,7 @@ CT_URL_MUSL="https://github.com/Matrix3600"
 CT_URL_CLANG="https://github.com/Matrix3600"
 CT_VER_GNU=20260515
 CT_VER_MUSL=20260515
-CT_VER_CLANG=untagged-7e94814dde9f68074e97
+CT_VER_CLANG=20260507
 
 LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 
@@ -138,8 +138,7 @@ install_packages
 
 if [ ! -f "clang-cross.tar.xz" ]; then
 	url="${CT_URL_CLANG}/clang-cross/releases/download/${CT_VER_CLANG}/clang-cross.tar.xz"
-	wget -nv -nc -T 120 --tries=20 --progress=dot:binary "$url"
-	if [ $? != 0 ]; then
+	if ! wget -nv -nc -T 120 --tries=20 --progress=dot:binary "$url"; then
 		build_llvm
 	fi
 fi
