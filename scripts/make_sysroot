@@ -15,7 +15,7 @@ install_packages()
 build_sysroot()
 {
 	local HOST="$1"
-	local host_name=$(sed 's/-unknown//g' <<< "$HOST") ;;
+	local host_name=$(sed 's/-unknown//g' <<< "$HOST")
 	local arch_name
 
 	case host_name in
