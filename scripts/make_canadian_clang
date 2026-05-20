@@ -4,10 +4,8 @@ set -e -o pipefail
 
 CT_URL_GNU="https://github.com/cross-tools"
 CT_URL_MUSL="https://github.com/Matrix3600"
-CT_URL_CLANG="https://github.com/Matrix3600"
 CT_VER_GNU=20260515
 CT_VER_MUSL=20260515
-CT_VER_CLANG=20260507
 
 LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 
@@ -28,50 +26,32 @@ install_packages()
 		xz-utils
 }
 
+
 build_llvm()
 {
-#	local HOST="$1"
-#	. targets/${HOST}/config
+	local HOST="$1"
+	local HOST_NAME=$(sed 's/-unknown//g' <<< "$HOST")
 
-	local SYSROOT_NAME="sysroot-deb-arm64-stable"
-	local SYSROOT="$(pwd)/${SYSROOT_NAME}"
-	local HOST="aarch64-linux-gnu"
+	local SYSROOT_NAME="sysroot-${HOST_NAME}"
 	local CLANG_ARGS=""
-
-	sudo rm -rf ${SYSROOT_NAME}
-	if [ ! -f "${SYSROOT_NAME}.tar.xz" ]; then
-		local name="6798ae80e4edb4b0f187.xz"
-		local url="https://ahp.li/${name}"
-		wget -nv -nc -T 120 --tries=20 "$url"
-		mv "${name}" "${SYSROOT_NAME}.tar.xz"
-	fi
-	sudo tar -xJf "${SYSROOT_NAME}.tar.xz"
-
-	sudo rm -rf build
-	mkdir build
-	pushd build
-if false; then
-	sudo rm -rf ${HOST}
-	if [ -f "../clang-${HOST}.tar.xz" ]; then
-		tar -xJf "../clang-${HOST}.tar.xz"
-	else
-		local url="${CT_URL_GNU}/gnu-cross/releases/download/${CT_VER_GNU}/${HOST}.tar.xz"
-		wget -O - -nv -T 120 --tries=20 "$url" | tar xJ
-	fi
-	find ${HOST} -exec chmod +w {} \;
-#	local SYSROOT="$(pwd)/${HOST}/${HOST}/sysroot"
-fi
-	popd
 
 	sudo rm -rf build-llvm
 	mkdir build-llvm
 	pushd build-llvm
 
-	cat - <<-EOF > ${HOST}-clang.cmake
+	sudo rm -rf "${SYSROOT_NAME}"
+	sudo tar -xJf "sysroot-${HOST}.tar.xz"
+
+	if [ ! -d "${SYSROOT_NAME}/usr/lib/${HOST_NAME}" ]; then
+		echo "[ERROR] Host ${HOST_NAME} not found in sysroot usr/lib."
+		return 1
+	fi
+
+	cat - <<-EOF > clang.cmake
 		set(CMAKE_SYSTEM_NAME Linux)
-		set(CMAKE_SYSROOT "$SYSROOT")
-		set(CMAKE_C_COMPILER_TARGET $HOST)
-		set(CMAKE_CXX_COMPILER_TARGET $HOST)
+		set(CMAKE_SYSROOT "$(pwd)/${SYSROOT_NAME}")
+		set(CMAKE_C_COMPILER_TARGET $HOST_NAME)
+		set(CMAKE_CXX_COMPILER_TARGET $HOST_NAME)
 		set(CMAKE_C_FLAGS_INIT "$CLANG_ARGS")
 		set(CMAKE_CXX_FLAGS_INIT "$CLANG_ARGS")
 		set(CMAKE_LINKER_TYPE LLD)
@@ -86,8 +66,8 @@ fi
 	cmake -G Ninja -S ../llvm/llvm \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DLLVM_ENABLE_PROJECTS="clang;lld" \
-		-DCMAKE_TOOLCHAIN_FILE="$(pwd)/${HOST}-clang.cmake" \
-		-DLLVM_HOST_TRIPLE=${HOST} \
+		-DCMAKE_TOOLCHAIN_FILE="$(pwd)/clang.cmake" \
+		-DLLVM_HOST_TRIPLE=${HOST_NAME} \
 		-DCMAKE_INSTALL_PREFIX="$(pwd)/clang-cross" \
 		-DLLVM_TARGETS_TO_BUILD="${LLVM_TARGETS}" \
 		-DCLANG_DEFAULT_LINKER=lld \
@@ -98,19 +78,22 @@ fi
 		-DLLVM_INSTALL_TOOLCHAIN_ONLY=ON
 	ninja install/strip
 	sudo chown -R root:root clang-cross
-	tar -cJvf ../${HOST}-clang-cross.tar.xz clang-cross
+	tar -cJvf ../clang-cross-${HOST}.tar.xz clang-cross
 	popd
-	# sudo rm -rf build-llvm
+	sudo rm -rf build-llvm
 }
 
 
 build_target()
 {
-	local TARGET="$1"
+	local HOST="$1"
+	local TARGET="$2"
 	. targets/${TARGET}/config
+
 	sudo rm -rf build
 	mkdir build
 	pushd build
+
 	tar -xf ../clang-cross.tar.xz
 	sudo chown -R $(id -u):$(id -g) clang-cross
 	sudo rm -rf ${TARGET}
@@ -119,10 +102,10 @@ build_target()
 	else
 		local url=""
 		case ${TARGET} in
-			*-gnu)
+			*-gnu*)
 				url="${CT_URL_GNU}/gnu-cross/releases/download/${CT_VER_GNU}/${TARGET}.tar.xz"
 				;;
-			*-musl)
+			*-musl*)
 				url="${CT_URL_MUSL}/musl-cross/releases/download/${CT_VER_MUSL}/${TARGET}.tar.xz"
 				;;
 			*)
@@ -167,10 +150,21 @@ build_target()
 		chmod +x clang-cross/bin/${TARGET}-${n%%:*}
 	done
 	find clang-cross -exec chmod a-w {} \;
+
+	local host_name="$(sed 's/-unknown//g' <<< "$HOST")"
+	case $host_name in
+		aarch64-linux-gnu)
+			host_name="linux-arm64" ;;
+		x86_64-linux-gnu)
+			host_name="linux-x64" ;;
+	esac
+
+	# Tarballs
 	sudo rm -rf ${TARGET}
 	mv clang-cross ${TARGET}
 	sudo chown -R root:root ${TARGET}
-	name="clang-${TARGET}"
+
+	name="clang-${host_name}_${TARGET}"
 	tar -cJvf ../${name}.tar.xz ${TARGET}
 	sha256sum ../${name}.tar.xz | awk '{ print $1 }' > ../${name}.tar.xz.sha256
 	popd
@@ -181,18 +175,13 @@ build_target()
 HOST=$1
 TARGET=$2
 
-if [ -z "${HOST}" ]; then
+if [ -z "$HOST" ]; then
 	echo "[ERROR] Host is missing."
 	exit 1
 fi
 
 if [ -z "$TARGET" ]; then
 	echo "[ERROR] Target is missing."
-	exit 1
-fi
-
-if [ ! -f "targets/${HOST}/config" ]; then
-	echo "[ERROR] Host not supported (${HOST})."
 	exit 1
 fi
 
@@ -208,10 +197,10 @@ fi
 
 install_packages
 
-if [ ! -f "${HOST}-clang-cross.tar.xz" ]; then
+if [ ! -f "clang-cross-${HOST}.tar.xz" ]; then
 	build_llvm "$HOST"
 fi
 
 if [ "$TARGET" != "llvm" ]; then
-	build_target "$TARGET"
+	build_target "$HOST" "$TARGET"
 fi
