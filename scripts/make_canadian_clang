@@ -67,7 +67,6 @@ fi
 	mkdir build-llvm
 	pushd build-llvm
 
-
 	cat - <<-EOF > ${HOST}-clang.cmake
 		set(CMAKE_SYSTEM_NAME Linux)
 		set(CMAKE_SYSROOT "$SYSROOT")
@@ -84,21 +83,16 @@ fi
 		set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 	EOF
 
-#		-DLLVM_ENABLE_RTTI=ON \
-#		-DCLANG_DEFAULT_PIE_ON_LINUX=ON \
-
 	cmake -G Ninja -S ../llvm/llvm \
-		-DLLVM_ENABLE_PROJECTS="clang;lld" \
-		-DLLVM_RUNTIME_TARGETS=mipsel-linux-musl \
-		-DRUNTIMES_mipsel-linux-musl_LLVM_ENABLE_RUNTIMES="compiler-rt" \
 		-DCMAKE_BUILD_TYPE=Release \
+		-DLLVM_ENABLE_PROJECTS="clang;lld" \
 		-DCMAKE_TOOLCHAIN_FILE="$(pwd)/${HOST}-clang.cmake" \
 		-DLLVM_HOST_TRIPLE=${HOST} \
 		-DCMAKE_INSTALL_PREFIX="$(pwd)/clang-cross" \
+		-DLLVM_TARGETS_TO_BUILD="${LLVM_TARGETS}" \
 		-DCLANG_DEFAULT_LINKER=lld \
 		-DENABLE_LINKER_BUILD_ID=ON \
 		-DLLVM_ENABLE_ZLIB=ON \
-		-DLLVM_TARGETS_TO_BUILD="${LLVM_TARGETS}" \
 		-DCLANG_LINK_CLANG_DYLIB=ON \
 		-DLLVM_LINK_LLVM_DYLIB=ON \
 		-DLLVM_INSTALL_TOOLCHAIN_ONLY=ON
