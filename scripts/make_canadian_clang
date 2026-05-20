@@ -42,7 +42,7 @@ build_llvm()
 	pushd build-llvm
 
 	sudo rm -rf "${SYSROOT_NAME}"
-	sudo tar -xJf "../sysroot-${HOST}.tar.xz"
+	sudo tar -xf "../sysroot-${HOST}.tar.xz"
 
 	if [ ! -d "${SYSROOT_NAME}/usr/lib/${HOST_NAME}" ]; then
 		echo "[ERROR] Host ${HOST_NAME} not found in sysroot usr/lib."
@@ -96,11 +96,11 @@ build_target()
 	mkdir build
 	pushd build
 
-	tar -xJf "../clang-cross-${HOST}.tar.xz"
+	tar -xf "../clang-cross-${HOST}.tar.xz"
 	sudo chown -R $(id -u):$(id -g) clang-cross
 	sudo rm -rf ${TARGET}
 	if [ -f "../${TARGET}.tar.xz" ]; then
-		tar -xJf "../${TARGET}.tar.xz"
+		tar -xf "../${TARGET}.tar.xz"
 	else
 		local url=""
 		case ${TARGET} in
@@ -115,7 +115,7 @@ build_target()
 				return 1
 				;;
 		esac
-		wget -O - -T 120 --tries=20 --progress=dot:binary "$url" | tar xJ
+		wget -O - -T 120 --tries=20 "$url" | tar x
 	fi
 	find ${TARGET} -exec chmod +w {} \;
 	cp -a ${TARGET}/include clang-cross/

@@ -145,7 +145,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           path: release
-          pattern: "clang-*-*-*"
+          pattern: "clang-${{ env.TOOLCHAIN_HOST }}_*-*-*"
           merge-multiple: true
       - name: Create release
         env:

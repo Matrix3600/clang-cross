@@ -64,7 +64,7 @@ build_target()
 	sudo chown -R $(id -u):$(id -g) clang-cross
 	sudo rm -rf ${TARGET}
 	if [ -f "../${TARGET}.tar.xz" ]; then
-		tar -xJf "../${TARGET}.tar.xz"
+		tar -xf "../${TARGET}.tar.xz"
 	else
 		local url=""
 		case ${TARGET} in
@@ -79,7 +79,7 @@ build_target()
 				return 1
 				;;
 		esac
-		wget -O - -T 120 --tries=20 "$url" | tar xJ
+		wget -O - -T 120 --tries=20 "$url" | tar x
 	fi
 	find ${TARGET} -exec chmod +w {} \;
 	cp -a ${TARGET}/include clang-cross/
