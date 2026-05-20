@@ -36,7 +36,7 @@ build_llvm()
 	local SYSROOT_NAME="sysroot-deb-arm64-stable"
 	local SYSROOT="$(pwd)/${SYSROOT_NAME}"
 	local HOST="aarch64-linux-gnu"
-	local CLANG_ARGS="-fuse-ld=lld"
+	local CLANG_ARGS=""
 
 	sudo rm -rf ${SYSROOT_NAME}
 	if [ ! -f "${SYSROOT_NAME}.tar.xz" ]; then
@@ -84,6 +84,9 @@ fi
 		set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 	EOF
 
+#		-DLLVM_ENABLE_RTTI=ON \
+#		-DCLANG_DEFAULT_PIE_ON_LINUX=ON \
+
 	cmake -G Ninja -S ../llvm/llvm \
 		-DLLVM_ENABLE_PROJECTS="clang;lld" \
 		-DCMAKE_BUILD_TYPE=Release \
@@ -91,9 +94,7 @@ fi
 		-DLLVM_HOST_TRIPLE=${HOST} \
 		-DCMAKE_INSTALL_PREFIX="$(pwd)/clang-cross" \
 		-DCLANG_DEFAULT_LINKER=lld \
-		-DCLANG_DEFAULT_PIE_ON_LINUX=ON \
 		-DENABLE_LINKER_BUILD_ID=ON \
-		-DLLVM_ENABLE_RTTI=ON \
 		-DLLVM_ENABLE_ZLIB=ON \
 		-DLLVM_TARGETS_TO_BUILD="${LLVM_TARGETS}" \
 		-DCLANG_LINK_CLANG_DYLIB=ON \
