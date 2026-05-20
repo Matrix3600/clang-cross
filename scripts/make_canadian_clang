@@ -115,7 +115,7 @@ build_target()
 				return 1
 				;;
 		esac
-		wget -O - -T 120 --tries=20 "$url" | tar xJ
+		wget -O - -T 120 --tries=20 --progress=dot:binary "$url" | tar xJ
 	fi
 	find ${TARGET} -exec chmod +w {} \;
 	cp -a ${TARGET}/include clang-cross/
@@ -192,10 +192,10 @@ if [[ $TARGET != "llvm" && ! -f "targets/${TARGET}/config" ]]; then
 	exit 1
 fi
 
-if [ "$HOST" == "$TARGET" ]; then
-	echo "[ERROR] Target and host are identical."
-	exit 1
-fi
+#if [ "$HOST" == "$TARGET" ]; then
+#	echo "[ERROR] Target and host are identical."
+#	exit 1
+#fi
 
 install_packages
 
