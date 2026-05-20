@@ -18,7 +18,7 @@ build_sysroot()
 	local host_name=$(sed 's/-unknown//g' <<< "$HOST")
 	local arch_name
 
-	case host_name in
+	case $host_name in
 		aarch64-linux-*)
 			arch_name="arm64" ;;
 		*)
