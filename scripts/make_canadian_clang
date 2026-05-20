@@ -190,7 +190,7 @@ if [[ $TARGET != "llvm" && ! -f "targets/${TARGET}/config" ]]; then
 	exit 1
 fi
 
-if [ "${HOST}" == "${TARGET}" ]; then
+if [ "$HOST" == "$TARGET" ]; then
 	echo "[ERROR] Target and host are identical."
 	exit 1
 fi

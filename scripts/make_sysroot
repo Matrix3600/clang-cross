@@ -34,11 +34,11 @@ build_sysroot()
 	mkdir build
 	pushd build
 
-	sudo rm -rf "${SYSROOT_NAME}"
+	sudo rm -rf "$SYSROOT_NAME"
 	sudo debootstrap --arch=${arch_name} --variant=minbase \
-		--include=build-essential,symlinks ${suite} "${SYSROOT_NAME}"
-	sudo chroot "${SYSROOT_NAME}" symlinks -cr .
-	sudo tar -cJvf "../sysroot-${HOST}.tar.xz" "${SYSROOT_NAME}"
+		--include=build-essential,symlinks ${suite} "$SYSROOT_NAME"
+	sudo chroot "$SYSROOT_NAME" symlinks -cr .
+	sudo tar -cJvf "../sysroot-${HOST}.tar.xz" "$SYSROOT_NAME"
 	popd
 	sudo rm -rf build
 }
@@ -46,7 +46,7 @@ build_sysroot()
 
 HOST=$1
 
-if [ -z "${HOST}" ]; then
+if [ -z "$HOST" ]; then
 	echo "[ERROR] Host is missing."
 	exit 1
 fi
