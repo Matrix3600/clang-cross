@@ -94,7 +94,7 @@ build_target()
 	mkdir build
 	pushd build
 
-	tar -xf ../clang-cross.tar.xz
+	tar -xJf "../clang-cross-${HOST}.tar.xz"
 	sudo chown -R $(id -u):$(id -g) clang-cross
 	sudo rm -rf ${TARGET}
 	if [ -f "../${TARGET}.tar.xz" ]; then
