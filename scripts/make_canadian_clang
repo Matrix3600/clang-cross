@@ -89,6 +89,8 @@ fi
 
 	cmake -G Ninja -S ../llvm/llvm \
 		-DLLVM_ENABLE_PROJECTS="clang;lld" \
+		-DLLVM_RUNTIME_TARGETS=mipsel-linux-musl \
+		-DRUNTIMES_mipsel-linux-musl_LLVM_ENABLE_RUNTIMES "compiler-rt" \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_TOOLCHAIN_FILE="$(pwd)/${HOST}-clang.cmake" \
 		-DLLVM_HOST_TRIPLE=${HOST} \

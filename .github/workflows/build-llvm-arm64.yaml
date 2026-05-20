@@ -26,6 +26,6 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: clang-cross
-          path: clang-cross.tar.xz
+          path: "*-clang-cross.tar.xz"
           if-no-files-found: error
           retention-days: 1
