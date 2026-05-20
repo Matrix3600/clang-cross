@@ -4,8 +4,10 @@ set -e -o pipefail
 
 CT_URL_GNU="https://github.com/cross-tools"
 CT_URL_MUSL="https://github.com/Matrix3600"
+CT_URL_CLANG="https://github.com/Matrix3600"
 CT_VER_GNU=20260515
 CT_VER_MUSL=20260515
+CT_VER_CLANG=arm64-20260520-pre
 
 LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 
@@ -198,7 +200,11 @@ fi
 install_packages
 
 if [ ! -f "clang-cross-${HOST}.tar.xz" ]; then
-	build_llvm "$HOST"
+	url="${CT_URL_CLANG}/clang-cross/releases/download/${CT_VER_CLANG}/clang-cross-${HOST}.tar.xz"
+	if ! wget -nv -nc -T 120 --tries=20 --progress=dot:binary "$url"; then
+		build_llvm "$HOST"
+	fi
+
 fi
 
 if [ "$TARGET" != "llvm" ]; then
