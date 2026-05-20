@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -e -o pipefail
 
 CT_URL_GNU="https://github.com/cross-tools"
 CT_URL_MUSL="https://github.com/Matrix3600"
@@ -62,24 +62,24 @@ build_target()
 
 	tar -xf ../clang-cross.tar.xz
 	sudo chown -R $(id -u):$(id -g) clang-cross
-	case ${TARGET} in
-		*gnu*)
-			URL="${CT_URL_GNU}/gnu-cross/releases/download/${CT_VER_GNU}/${TARGET}.tar.xz"
-			;;
-		*musl*)
-			URL="${CT_URL_MUSL}/musl-cross/releases/download/${CT_VER_MUSL}/${TARGET}.tar.xz"
-			;;
-	esac
 	sudo rm -rf ${TARGET}
 	if [ -f "../${TARGET}.tar.xz" ]; then
 		tar -xJf "../${TARGET}.tar.xz"
 	else
-		for n in {0..9}; do
-			if wget -O - "${URL}" | tar xJ; then
-				break
-			fi
-			sleep 5
-		done
+		local url=""
+		case ${TARGET} in
+			*-gnu*)
+				url="${CT_URL_GNU}/gnu-cross/releases/download/${CT_VER_GNU}/${TARGET}.tar.xz"
+				;;
+			*-musl*)
+				url="${CT_URL_MUSL}/musl-cross/releases/download/${CT_VER_MUSL}/${TARGET}.tar.xz"
+				;;
+			*)
+				echo "Target not supported (${TARGET})."
+				return 1
+				;;
+		esac
+		wget -O - -T 120 --tries=20 "$url" | tar xJ
 	fi
 	find ${TARGET} -exec chmod +w {} \;
 	cp -a ${TARGET}/include clang-cross/
