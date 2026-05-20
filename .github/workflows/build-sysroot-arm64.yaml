@@ -1,0 +1,27 @@
+name: Build sysroot ARM64
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['arm64-*']
+
+permissions:
+  contents: read
+
+jobs:
+  build-sysroot:
+    name: Build sysroot
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Build
+        run: |
+          ./scripts/make_sysroot aarch64-unknown-linux-gnu
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: clang-cross
+          path: "sysroot-*.tar.xz"
+          if-no-files-found: error
+          retention-days: 1
