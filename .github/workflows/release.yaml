@@ -3,7 +3,7 @@ name: Release
 on:
   workflow_dispatch:
   push:
-    tags: ['*']
+    tags: ['*', '!arm64-*']
 
 permissions:
   contents: read
@@ -31,7 +31,7 @@ jobs:
           retention-days: 1
 
   build-targets:
-    name: Build Targets
+    name: Build targets
     runs-on: ubuntu-24.04
     needs: [build-llvm]
     strategy:
