@@ -17,11 +17,11 @@ install_packages()
 	sudo apt-get install -y --no-install-recommends \
 		build-essential \
 		ca-certificates \
-		clang-21 \
+		clang \
 		cmake \
 		git \
 		libz-dev \
-		lld-21 \
+		lld \
 		ninja-build \
 		python3 \
 		wget \
@@ -50,7 +50,7 @@ build_llvm()
 	sudo rm -rf build
 	mkdir build
 	pushd build
-if false; then	
+if false; then
 	sudo rm -rf ${HOST}
 	if [ -f "../clang-${HOST}.tar.xz" ]; then
 		tar -xJf "../clang-${HOST}.tar.xz"
@@ -76,12 +76,12 @@ fi
 		set(CMAKE_C_FLAGS_INIT "$CLANG_ARGS")
 		set(CMAKE_CXX_FLAGS_INIT "$CLANG_ARGS")
 		set(CMAKE_LINKER_TYPE LLD)
-		set(CMAKE_C_COMPILER clang-21)
-		set(CMAKE_CXX_COMPILER clang++-21)
+		set(CMAKE_C_COMPILER clang)
+		set(CMAKE_CXX_COMPILER clang++)
 		set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 		set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 		set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-		set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)	
+		set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 	EOF
 
 	cmake -G Ninja -S ../llvm/llvm \
