@@ -79,7 +79,7 @@ build_target()
 				return 1
 				;;
 		esac
-		wget -O - -T 120 --tries=20 "$url" | tar x
+		wget -O - -T 120 --tries=20 "$url" | tar xJ
 	fi
 	find ${TARGET} -exec chmod +w {} \;
 	cp -a ${TARGET}/include clang-cross/
