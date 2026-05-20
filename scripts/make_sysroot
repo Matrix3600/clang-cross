@@ -15,27 +15,30 @@ install_packages()
 build_sysroot()
 {
 	local HOST="$1"
-	local host_name=$(sed 's/-unknown//g' <<< "$HOST")
+	local HOST_NAME=$(sed 's/-unknown//g' <<< "$HOST")
 	local arch_name
+	local suite
 
-	case $host_name in
+	case $HOST_NAME in
 		aarch64-linux-*)
-			arch_name="arm64" ;;
+			arch_name="arm64"
+			suite="stable"
+			;;
 		*)
 			echo "Target not supported (${HOST})."
 			return 1
 	esac
+	local SYSROOT_NAME="sysroot-${HOST_NAME}"
 
 	sudo rm -rf build
 	mkdir build
 	pushd build
 
-	sysroot_name="sysroot-deb-${arch_name}-stable"
-
-	sudo rm -rf "${sysroot_name}"
-	sudo debootstrap --arch=${arch_name} --variant=minbase --include=build-essential,symlinks stable ${sysroot_name}
-	sudo chroot ${sysroot_name} symlinks -cr .
-	sudo tar -cJvf "../sysroot-${HOST}.tar.xz" ${sysroot_name}
+	sudo rm -rf "${SYSROOT_NAME}"
+	sudo debootstrap --arch=${arch_name} --variant=minbase \
+		--include=build-essential,symlinks ${suite} "${SYSROOT_NAME}"
+	sudo chroot "${SYSROOT_NAME}" symlinks -cr .
+	sudo tar -cJvf "../sysroot-${HOST}.tar.xz" "${SYSROOT_NAME}"
 	popd
 	sudo rm -rf build
 }
