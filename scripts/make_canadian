@@ -123,17 +123,17 @@ build_llvm()
 
 	cmake -G Ninja -S ../llvm/llvm \
 		-DCMAKE_BUILD_TYPE=Release \
-		-DLLVM_ENABLE_PROJECTS="clang;lld" \
 		-DCMAKE_TOOLCHAIN_FILE="$(pwd)/clang.cmake" \
-		-DLLVM_HOST_TRIPLE=${HOST_NAME} \
 		-DCMAKE_INSTALL_PREFIX="$(pwd)/clang-cross" \
+		-DLLVM_ENABLE_PROJECTS="clang;lld" \
+		-DLLVM_HOST_TRIPLE=${HOST_NAME} \
 		-DLLVM_TARGETS_TO_BUILD="${LLVM_TARGETS}" \
-		-DCLANG_DEFAULT_LINKER=lld \
-		-DENABLE_LINKER_BUILD_ID=ON \
-		-DLLVM_ENABLE_ZLIB=ON \
 		-DCLANG_LINK_CLANG_DYLIB=ON \
 		-DLLVM_LINK_LLVM_DYLIB=ON \
 		-DLLVM_INSTALL_TOOLCHAIN_ONLY=ON \
+		-DENABLE_LINKER_BUILD_ID=ON \
+		-DCLANG_DEFAULT_LINKER=lld \
+		-DLLVM_ENABLE_ZLIB=ON \
 		-DLLVM_ENABLE_RTTI=ON
 	ninja install/strip
 	sudo chown -R root:root clang-cross
