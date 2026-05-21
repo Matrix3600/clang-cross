@@ -2,26 +2,41 @@
 
 set -e -o pipefail
 
-CT_URL_GNU="https://github.com/cross-tools"
-CT_URL_MUSL="https://github.com/Matrix3600"
-CT_VER_GNU=20260515
-CT_VER_MUSL=20260515
+GH_URL_GNU="https://github.com/cross-tools"
+GH_URL_MUSL="https://github.com/Matrix3600"
+GH_VER_GNU=20260515
+GH_VER_MUSL=20260515
 
 LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 
 install_packages()
 {
+	local modules="$1"
+	if [ -z "$modules" ]; then
+		modules="llvm targets"
+	fi
 	sudo apt-get update
-	sudo apt-get install -y --no-install-recommends \
-		build-essential \
-		ca-certificates \
-		cmake \
-		git \
-		libz-dev \
-		ninja-build \
-		python3 \
-		wget \
-		xz-utils
+	local packages="wget xz-utils"
+
+	for module in $modules; do
+		case $module in
+			llvm)
+				packages=${packages} \
+					build-essential \
+					ca-certificates \
+					cmake \
+					libz-dev \
+					ninja-build \
+					python3
+				;;
+			*)	# Targets
+				;;
+		esac
+	done
+
+	for package in $packages do
+		sudo apt-get install -y --no-install-recommends $package
+	done
 }
 
 
@@ -30,6 +45,7 @@ build_llvm()
 	sudo rm -rf build-llvm
 	mkdir build-llvm
 	pushd build-llvm
+
 	cmake -G Ninja -S ../llvm/llvm \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DLLVM_ENABLE_PROJECTS="clang;lld" \
@@ -69,10 +85,10 @@ build_target()
 		local url=""
 		case ${TARGET} in
 			*-gnu*)
-				url="${CT_URL_GNU}/gnu-cross/releases/download/${CT_VER_GNU}/${TARGET}.tar.xz"
+				url="${GH_URL_GNU}/gnu-cross/releases/download/${GH_VER_GNU}/${TARGET}.tar.xz"
 				;;
 			*-musl*)
-				url="${CT_URL_MUSL}/musl-cross/releases/download/${CT_VER_MUSL}/${TARGET}.tar.xz"
+				url="${GH_URL_MUSL}/musl-cross/releases/download/${GH_VER_MUSL}/${TARGET}.tar.xz"
 				;;
 			*)
 				echo "Target not supported (${TARGET})."
@@ -139,7 +155,7 @@ if [[ $TARGET != "llvm" && ! -f "targets/${TARGET}/config" ]]; then
 	exit 1
 fi
 
-install_packages
+install_packages "$TARGET"
 
 if [ ! -f "clang-cross.tar.xz" ]; then
 	build_llvm

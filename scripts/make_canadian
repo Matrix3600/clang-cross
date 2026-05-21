@@ -2,30 +2,84 @@
 
 set -e -o pipefail
 
-CT_URL_GNU="https://github.com/cross-tools"
-CT_URL_MUSL="https://github.com/Matrix3600"
-CT_URL_CLANG="https://github.com/Matrix3600"
-CT_VER_GNU=20260515
-CT_VER_MUSL=20260515
-CT_VER_CLANG=arm64-20260520-pre
+GH_URL_GNU="https://github.com/cross-tools"
+GH_URL_MUSL="https://github.com/Matrix3600"
+GH_URL_CLANG="https://github.com/Matrix3600"
+GH_VER_GNU=20260515
+GH_VER_MUSL=20260515
+GH_VER_CLANG=arm64-20260520-pre
 
 LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 
+
 install_packages()
 {
+	local modules="$1"
+	if [ -z "$modules" ]; then
+		modules="sysroot llvm targets"
+	fi
 	sudo apt-get update
-	sudo apt-get install -y --no-install-recommends \
-		build-essential \
-		ca-certificates \
-		clang \
-		cmake \
-		git \
-		libz-dev \
-		lld \
-		ninja-build \
-		python3 \
-		wget \
-		xz-utils
+	local packages="wget xz-utils"
+
+	for module in $modules; do
+		case $module in
+			llvm)
+				packages=${packages} \
+					build-essential \
+					ca-certificates \
+					clang \
+					cmake \
+					libz-dev \
+					lld \
+					ninja-build \
+					python3
+				;;
+			sysroot)
+				packages=${packages} \
+					binfmt-support \
+					debootstrap \
+					qemu-user-static
+				;;
+			*)	# Targets
+				;;
+		esac
+	done
+
+	for package in $packages do
+		sudo apt-get install -y --no-install-recommends $package
+	done
+}
+
+
+build_sysroot()
+{
+	local HOST="$1"
+	local HOST_NAME=$(sed 's/-unknown//g' <<< "$HOST")
+	local arch_name
+	local suite
+
+	case $HOST_NAME in
+		aarch64-linux-*)
+			arch_name="arm64"
+			suite="stable"
+			;;
+		*)
+			echo "Target not supported (${HOST})."
+			return 1
+	esac
+	local SYSROOT_NAME="sysroot-${HOST_NAME}"
+
+	sudo rm -rf build
+	mkdir build
+	pushd build
+
+	sudo rm -rf "$SYSROOT_NAME"
+	sudo debootstrap --arch=${arch_name} --variant=minbase \
+		--include=build-essential,symlinks ${suite} "$SYSROOT_NAME"
+	sudo chroot "$SYSROOT_NAME" symlinks -cr .
+	sudo tar -cJvf "../sysroot-${HOST}.tar.xz" "$SYSROOT_NAME"
+	popd
+	sudo rm -rf build
 }
 
 
@@ -77,7 +131,8 @@ build_llvm()
 		-DLLVM_ENABLE_ZLIB=ON \
 		-DCLANG_LINK_CLANG_DYLIB=ON \
 		-DLLVM_LINK_LLVM_DYLIB=ON \
-		-DLLVM_INSTALL_TOOLCHAIN_ONLY=ON
+		-DLLVM_INSTALL_TOOLCHAIN_ONLY=ON \
+		-DLLVM_ENABLE_RTTI=ON
 	ninja install/strip
 	sudo chown -R root:root clang-cross
 	tar -cJvf ../clang-cross-${HOST}.tar.xz clang-cross
@@ -105,10 +160,10 @@ build_target()
 		local url=""
 		case ${TARGET} in
 			*-gnu*)
-				url="${CT_URL_GNU}/gnu-cross/releases/download/${CT_VER_GNU}/${TARGET}.tar.xz"
+				url="${GH_URL_GNU}/gnu-cross/releases/download/${GH_VER_GNU}/${TARGET}.tar.xz"
 				;;
 			*-musl*)
-				url="${CT_URL_MUSL}/musl-cross/releases/download/${CT_VER_MUSL}/${TARGET}.tar.xz"
+				url="${GH_URL_MUSL}/musl-cross/releases/download/${GH_VER_MUSL}/${TARGET}.tar.xz"
 				;;
 			*)
 				echo "Target not supported (${TARGET})."
@@ -197,16 +252,21 @@ fi
 #	exit 1
 #fi
 
-install_packages
+install_packages "$TARGET"
 
-if [ ! -f "clang-cross-${HOST}.tar.xz" ]; then
-	url="${CT_URL_CLANG}/clang-cross/releases/download/${CT_VER_CLANG}/clang-cross-${HOST}.tar.xz"
+if [[ ! -f "sysroot-${HOST}.tar.xz" && ! -f "clang-cross-${HOST}.tar.xz" ]]; then
+	build_sysroot "$HOST"
+fi
+
+if [[ $TARGET != "sysroot" && ! -f "clang-cross-${HOST}.tar.xz" ]]; then
+	url="${GH_URL_CLANG}/clang-cross/releases/download/${GH_VER_CLANG}/clang-cross-${HOST}.tar.xz"
 	if ! wget -nv -nc -T 120 --tries=20 --progress=dot:binary "$url"; then
 		build_llvm "$HOST"
 	fi
-
 fi
 
-if [ "$TARGET" != "llvm" ]; then
+if [[ $TARGET != "sysroot" && $TARGET != "llvm" ]]; then
 	build_target "$HOST" "$TARGET"
 fi
+
+echo -e "\nDone.\n"
