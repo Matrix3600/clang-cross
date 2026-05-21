@@ -242,7 +242,8 @@ if [ -z "$TARGET" ]; then
 	exit 1
 fi
 
-if [[ $TARGET != "llvm" && ! -f "targets/${TARGET}/config" ]]; then
+if [[ $TARGET != "sysroot" && $TARGET != "llvm" && \
+		! -f "targets/${TARGET}/config" ]]; then
 	echo "[ERROR] Target not supported (${TARGET})."
 	exit 1
 fi
