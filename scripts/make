@@ -2,26 +2,41 @@
 
 set -e -o pipefail
 
-CT_URL_GNU="https://github.com/cross-tools"
-CT_URL_MUSL="https://github.com/Matrix3600"
-CT_VER_GNU=20260515
-CT_VER_MUSL=20260515
+GH_URL_GNU="https://github.com/cross-tools"
+GH_URL_MUSL="https://github.com/Matrix3600"
+GH_VER_GNU=20260515
+GH_VER_MUSL=20260515
 
 LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 
+
 install_packages()
 {
+	local modules="$1"
+	if [ -z "$modules" ]; then
+		modules="llvm targets"
+	fi
 	sudo apt-get update
-	sudo apt-get install -y --no-install-recommends \
-		build-essential \
-		ca-certificates \
-		cmake \
-		git \
-		libz-dev \
-		ninja-build \
-		python3 \
-		wget \
-		xz-utils
+	local packages="wget xz-utils"
+
+	for module in $modules; do
+		case $module in
+			llvm)
+				packages="${packages} \
+					build-essential \
+					ca-certificates \
+					cmake \
+					libz-dev \
+					ninja-build \
+					python3 \
+				"
+				;;
+			*)	# Targets
+				;;
+		esac
+	done
+
+	sudo apt-get install -y --no-install-recommends $packages
 }
 
 
@@ -30,21 +45,24 @@ build_llvm()
 	sudo rm -rf build-llvm
 	mkdir build-llvm
 	pushd build-llvm
+
 	cmake -G Ninja -S ../llvm/llvm \
 		-DCMAKE_BUILD_TYPE=Release \
-		-DLLVM_ENABLE_PROJECTS="clang;lld" \
 		-DCMAKE_INSTALL_PREFIX="$(pwd)/clang-cross" \
+		-DLLVM_ENABLE_PROJECTS="clang;lld" \
 		-DLLVM_TARGETS_TO_BUILD="${LLVM_TARGETS}" \
-		-DCLANG_DEFAULT_LINKER=lld \
-		-DENABLE_LINKER_BUILD_ID=ON \
-		-DLLVM_ENABLE_ZLIB=ON \
 		-DCLANG_LINK_CLANG_DYLIB=ON \
 		-DLLVM_LINK_LLVM_DYLIB=ON \
 		-DLLVM_INSTALL_TOOLCHAIN_ONLY=ON \
+		-DENABLE_LINKER_BUILD_ID=ON \
+		-DCLANG_DEFAULT_LINKER=lld \
 		-DCLANG_DEFAULT_PIE_ON_LINUX=ON \
-		-DLLVM_ENABLE_RTTI=ON
+		-DLLVM_ENABLE_EH=ON \
+		-DLLVM_ENABLE_RTTI=ON \
+		-DLLVM_ENABLE_ZLIB=ON
 	ninja install/strip
 	sudo chown -R root:root clang-cross
+	echo -e "\nCreating \"clang-cross.tar.xz\" ...\n"
 	tar -cJvf ../clang-cross.tar.xz clang-cross
 	popd
 	sudo rm -rf build-llvm
@@ -64,15 +82,15 @@ build_target()
 	sudo chown -R $(id -u):$(id -g) clang-cross
 	sudo rm -rf ${TARGET}
 	if [ -f "../${TARGET}.tar.xz" ]; then
-		tar -xJf "../${TARGET}.tar.xz"
+		tar -xf "../${TARGET}.tar.xz"
 	else
 		local url=""
 		case ${TARGET} in
 			*-gnu*)
-				url="${CT_URL_GNU}/gnu-cross/releases/download/${CT_VER_GNU}/${TARGET}.tar.xz"
+				url="${GH_URL_GNU}/gnu-cross/releases/download/${GH_VER_GNU}/${TARGET}.tar.xz"
 				;;
 			*-musl*)
-				url="${CT_URL_MUSL}/musl-cross/releases/download/${CT_VER_MUSL}/${TARGET}.tar.xz"
+				url="${GH_URL_MUSL}/musl-cross/releases/download/${GH_VER_MUSL}/${TARGET}.tar.xz"
 				;;
 			*)
 				echo "Target not supported (${TARGET})."
@@ -120,6 +138,7 @@ build_target()
 	mv clang-cross ${TARGET}
 	sudo chown -R root:root ${TARGET}
 	name="clang-${TARGET}"
+	echo -e "\nCreating \"${name}.tar.xz\" ...\n"
 	tar -cJvf ../${name}.tar.xz ${TARGET}
 	sha256sum ../${name}.tar.xz | awk '{ print $1 }' > ../${name}.tar.xz.sha256
 	popd
@@ -139,7 +158,7 @@ if [[ $TARGET != "llvm" && ! -f "targets/${TARGET}/config" ]]; then
 	exit 1
 fi
 
-install_packages
+install_packages "$TARGET"
 
 if [ ! -f "clang-cross.tar.xz" ]; then
 	build_llvm
@@ -148,3 +167,5 @@ fi
 if [ "$TARGET" != "llvm" ]; then
 	build_target "$TARGET"
 fi
+
+echo -e "\nDone.\n"
