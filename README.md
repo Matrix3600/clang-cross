@@ -3,7 +3,10 @@
 This is a simple and lightweight project for making a cross-compilation
 toolchain with the Clang compiler, and the gnu or musl C library.
 
-The released toolchains (compilers) run on Linux x86_64.
+The released toolchains (compilers) run on:
+
+- Linux x86_64
+- Linux ARM64
 
 
 ## Supported targets
@@ -94,8 +97,8 @@ MIT
 
 We would like to express our gratitude to the following individuals and projects:
 
+- [cross-tools](https://github.com/cross-tools)
 - [llvm](https://llvm.org)
 - [linux](https://kernel.org)
 - [glibc](https://www.gnu.org/software/libc)
 - [musl](https://www.musl-libc.org)
-- [cross-tools](https://github.com/cross-tools)
