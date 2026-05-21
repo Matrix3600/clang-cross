@@ -3,7 +3,7 @@ name: Release
 on:
   workflow_dispatch:
   push:
-    tags: ['*', '!arm64-*', '!test-*']
+    tags: ['test-clang-*']
 
 permissions:
   contents: read
@@ -21,7 +21,7 @@ jobs:
       - name: Build
         run: |
           sudo rm -rf /opt/clang-cross
-          ./scripts/make llvm
+          ./scripts/make_clang llvm
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
@@ -95,7 +95,7 @@ jobs:
       - name: Build
         run: |
           sudo rm -rf /opt/clang-cross
-          ./scripts/make "${{ matrix.target }}"
+          ./scripts/make_clang "${{ matrix.target }}"
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
