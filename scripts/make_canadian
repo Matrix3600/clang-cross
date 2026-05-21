@@ -78,6 +78,7 @@ build_sysroot()
 	sudo debootstrap --arch=${arch_name} --variant=minbase \
 		--include=build-essential,symlinks ${suite} "$SYSROOT_NAME"
 	sudo chroot "$SYSROOT_NAME" symlinks -cr .
+	echo -e "\nCreating \"sysroot-${HOST}.tar.xz\" ...\n"
 	sudo tar -cJvf "../sysroot-${HOST}.tar.xz" "$SYSROOT_NAME"
 	popd
 	sudo rm -rf build
@@ -136,6 +137,7 @@ build_llvm()
 		-DLLVM_ENABLE_RTTI=ON
 	ninja install/strip
 	sudo chown -R root:root clang-cross
+	echo -e "\nCreating \"clang-cross-${HOST}.tar.xz\" ...\n"
 	tar -cJvf ../clang-cross-${HOST}.tar.xz clang-cross
 	popd
 	sudo rm -rf build-llvm
@@ -223,6 +225,7 @@ build_target()
 	sudo chown -R root:root ${TARGET}
 
 	name="clang-${host_name}_${TARGET}"
+	echo -e "\nCreating \"${name}.tar.xz\" ...\n"
 	tar -cJvf ../${name}.tar.xz ${TARGET}
 	sha256sum ../${name}.tar.xz | awk '{ print $1 }' > ../${name}.tar.xz.sha256
 	popd
