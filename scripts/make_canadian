@@ -254,11 +254,6 @@ if [[ $TARGET != "sysroot" && $TARGET != "llvm" && \
 	exit 1
 fi
 
-#if [ "$HOST" == "$TARGET" ]; then
-#	echo "[ERROR] Target and host are identical."
-#	exit 1
-#fi
-
 install_packages "$TARGET"
 
 if [[ ! -f "sysroot-${HOST}.tar.xz" && ! -f "clang-cross-${HOST}.tar.xz" ]]; then
