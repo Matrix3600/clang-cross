@@ -105,6 +105,30 @@ build_llvm()
 		return 1
 	fi
 
+	# Search llvm-strip name
+	local llvm_strip=""
+	IFS=:
+	for p in $PATH; do
+		unset IFS
+		for n in ${p}/llvm-strip*; do
+			if [[ -f $n && $n =~ /(llvm-strip(|-[0-9]+))$ ]]; then
+				llvm_strip=$n
+				break 2
+			fi
+		done
+	done
+	unset IFS
+	local options=""
+	if [ -n "$llvm_strip" ]; then
+		options="\
+			-DCMAKE_STRIP="$llvm_strip" \
+		"
+	fi
+	echo "Using options: $options"
+
+	# DEBUG
+	ls -l /usr/bin/llvm-strip*
+
 	cat - <<-EOF > clang.cmake
 		set(CMAKE_SYSTEM_NAME Linux)
 		set(CMAKE_SYSROOT "$(pwd)/${SYSROOT_NAME}")
@@ -115,14 +139,13 @@ build_llvm()
 		set(CMAKE_LINKER_TYPE LLD)
 		set(CMAKE_C_COMPILER clang)
 		set(CMAKE_CXX_COMPILER clang++)
-		set(CMAKE_STRIP llvm-strip)
 		set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 		set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 		set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 		set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 	EOF
 
-	cmake -G Ninja -S ../llvm/llvm \
+	cmake -G Ninja -S ../llvm/llvm $options \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_TOOLCHAIN_FILE="$(pwd)/clang.cmake" \
 		-DCMAKE_INSTALL_PREFIX="$(pwd)/clang-cross" \
