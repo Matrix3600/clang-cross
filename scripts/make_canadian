@@ -167,7 +167,7 @@ build_llvm()
 	ninja install/strip
 	sudo chown -R root:root clang-cross
 	echo -e "\nCreating \"clang-cross-${HOST}.tar.xz\" ...\n"
-	tar -cJvf ../clang-cross-${HOST}.tar.xz clang-cross
+	tar -cJvf "../clang-cross-${HOST}.tar.xz" clang-cross
 	popd
 	sudo rm -rf build-llvm
 }
@@ -255,9 +255,9 @@ build_target()
 
 	name="clang-${host_name}_${TARGET}.tar.xz"
 	echo -e "\nCreating \"${name}\" ...\n"
-	tar -cJvf ../${name} ${TARGET}
-	local hash="$(sha256sum ../${name} | awk '{ print $1 }')"
-	printf '%s *%s\n' "$hash" "$name" > ../${name}.sha256
+	tar -cJvf "../${name}" "${TARGET}"
+	local hash="$(sha256sum "../${name}" | awk '{ print $1 }')"
+	printf '%s *%s\n' "$hash" "$name" > "../${name}.sha256"
 	popd
 	sudo rm -rf build
 }

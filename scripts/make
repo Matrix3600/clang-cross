@@ -78,7 +78,7 @@ build_llvm()
 	ninja install/strip
 	sudo chown -R root:root clang-cross
 	echo -e "\nCreating \"clang-cross.tar.xz\" ...\n"
-	tar -cJvf ../clang-cross.tar.xz clang-cross
+	tar -cJvf "../clang-cross.tar.xz" clang-cross
 	popd
 	sudo rm -rf build-llvm
 }
@@ -93,7 +93,7 @@ build_target()
 	mkdir build
 	pushd build
 
-	tar -xf ../clang-cross.tar.xz
+	tar -xf "../clang-cross.tar.xz"
 	sudo chown -R $(id -u):$(id -g) clang-cross
 	sudo rm -rf ${TARGET}
 	if [ -f "../${TARGET}.tar.xz" ]; then
@@ -149,14 +149,17 @@ build_target()
 		chmod +x clang-cross/bin/${TARGET}-${n%%:*}
 	done
 	find clang-cross -exec chmod a-w {} \;
+
+	# Tarballs
 	sudo rm -rf ${TARGET}
 	mv clang-cross ${TARGET}
 	sudo chown -R root:root ${TARGET}
+
 	name="clang-${TARGET}.tar.xz"
 	echo -e "\nCreating \"${name}\" ...\n"
-	tar -cJvf ../${name} ${TARGET}
-	local hash="$(sha256sum ../${name} | awk '{ print $1 }')"
-	printf '%s *%s\n' "$hash" "${name}" > ../${name}.sha256
+	tar -cJvf "../${name}" "${TARGET}"
+	local hash="$(sha256sum "../${name}" | awk '{ print $1 }')"
+	printf '%s *%s\n' "$hash" "$name" > "../${name}.sha256"
 	popd
 	sudo rm -rf build
 }
