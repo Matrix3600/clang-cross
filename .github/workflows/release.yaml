@@ -133,6 +133,10 @@ jobs:
               --title="$tag" \
               --generate-notes --draft
           fi
+          hashfile="@clang-linux-x64-SHA256SUMS"
+          rm -f "$hashfile"
           for name in release/*.tar.xz; do
-            gh release upload "$tag" "$name" "$name.sha256"
+            gh release upload "$tag" "$name"
+            cat "${name}.sha256" >> "$hashfile"
           done
+          gh release upload "$tag" "$hashfile"

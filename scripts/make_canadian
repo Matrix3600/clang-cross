@@ -253,10 +253,11 @@ build_target()
 	mv clang-cross ${TARGET}
 	sudo chown -R root:root ${TARGET}
 
-	name="clang-${host_name}_${TARGET}"
-	echo -e "\nCreating \"${name}.tar.xz\" ...\n"
-	tar -cJvf ../${name}.tar.xz ${TARGET}
-	sha256sum ../${name}.tar.xz | awk '{ print $1 }' > ../${name}.tar.xz.sha256
+	name="clang-${host_name}_${TARGET}.tar.xz"
+	echo -e "\nCreating \"${name}\" ...\n"
+	tar -cJvf ../${name} ${TARGET}
+	local hash="$(sha256sum ../${name} | awk '{ print $1 }')"
+	printf '%s *%s\n' "$hash" "$name" > ../${name}.sha256
 	popd
 	sudo rm -rf build
 }
