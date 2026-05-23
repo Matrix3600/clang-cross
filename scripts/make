@@ -87,6 +87,7 @@ build_llvm()
 build_target()
 {
 	local TARGET="$1"
+	local HOST_NAME="$2"
 	. targets/${TARGET}/config
 
 	sudo rm -rf build
@@ -155,7 +156,11 @@ build_target()
 	mv clang-cross ${TARGET}
 	sudo chown -R root:root ${TARGET}
 
-	name="clang-${TARGET}.tar.xz"
+	if [ -n "$HOST_NAME" ]; then
+		local name="clang-${HOST_NAME}_${TARGET}.tar.xz"
+	else
+		local name="clang-${TARGET}.tar.xz"
+	fi
 	echo -e "\nCreating \"${name}\" ...\n"
 	tar -cJvf "../${name}" "${TARGET}"
 	local hash="$(sha256sum "../${name}" | awk '{ print $1 }')"
@@ -167,6 +172,7 @@ build_target()
 
 TARGET=$1
 COMPILER=$2
+HOST_NAME=$3
 
 if [ -z "$TARGET" ]; then
 	echo "[ERROR] Target is missing."
@@ -185,7 +191,7 @@ if [ ! -f "clang-cross.tar.xz" ]; then
 fi
 
 if [ "$TARGET" != "llvm" ]; then
-	build_target "$TARGET"
+	build_target "$TARGET" "$HOST_NAME"
 fi
 
 echo -e "\nDone.\n"
