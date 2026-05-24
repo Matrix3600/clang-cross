@@ -1,0 +1,256 @@
+#!/usr/bin/env bash
+
+set -e -o pipefail
+
+GH_URL_GNU="https://github.com/cross-tools"
+GH_URL_MUSL="https://github.com/Matrix3600"
+GH_VER_GNU=20260515
+GH_VER_MUSL=20260515
+
+LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
+
+
+install_packages()
+{
+	local modules="$1"
+	local compiler="$2"
+	if [ -z "$modules" ]; then
+		modules="llvm targets"
+	fi
+	sudo apt-get update
+	local packages="wget xz-utils"
+
+	for module in $modules; do
+		case $module in
+			llvm)
+				packages="${packages} \
+					build-essential \
+					ca-certificates \
+					cmake \
+					libz-dev \
+					ninja-build \
+					python3 \
+				"
+				case $compiler in
+					clang) packages="${packages} clang lld" ;;
+					gcc-mingw) packages="${packages} mingw-w64" ;;
+				esac
+				;;
+			*)	# Targets
+				;;
+		esac
+	done
+
+	sudo apt-get install -y --no-install-recommends $packages
+}
+
+
+install_compiler()
+{
+	case $1 in
+		clang-mingw)
+			local name="llvm-mingw-20260519-msvcrt-ubuntu-22.04-x86_64"
+			local url="https://github.com/mstorsjo/llvm-mingw/releases/download/20260519/${name}.tar.xz"
+			wget -O - -T 120 --tries=20 "$url" | tar xJ
+			mv "$name" "llvm-mingw"
+			export PATH="$(pwd)/llvm-mingw/bin:$PATH"
+		;;
+	esac
+}
+
+
+build_llvm()
+{
+	local compiler="$1"
+	sudo rm -rf build-llvm
+	mkdir build-llvm
+	pushd build-llvm
+
+	install_compiler "$compiler"
+
+	local options=""
+	case $compiler in
+		clang)
+			options="\
+				-DCMAKE_C_COMPILER=clang \
+				-DCMAKE_CXX_COMPILER=clang++ \
+				-DCMAKE_LINKER_TYPE=LLD \
+			" ;;
+		clang-mingw)
+			options="\
+				-DCMAKE_TOOLCHAIN_FILE="$(pwd)/clang.cmake" \
+			" ;;
+		gcc-mingw)
+			options="\
+				-DCMAKE_TOOLCHAIN_FILE="$(pwd)/gcc.cmake" \
+			" ;;
+	esac
+
+	cat - <<-EOF > clang.cmake
+		set(CMAKE_SYSTEM_NAME Windows)
+		set(CMAKE_SYSTEM_PROCESSOR x86_64)
+		set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+		set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+		set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+		set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+		set(CMAKE_GET_RUNTIME_DEPENDENCIES_PLATFORM "windows+pe")
+		set(CMAKE_FIND_ROOT_PATH "$(pwd)/llvm-mingw/x86_64-w64-mingw32)")
+		set(CMAKE_C_COMPILER x86_64-w64-mingw32-clang)
+		set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-clang++)
+		set(CMAKE_RC_COMPILER x86_64-w64-mingw32-windres)
+		set(CMAKE_STRIP x86_64-w64-mingw32-strip)
+		set(CMAKE_C_COMPILER_TARGET x86_64-w64-mingw32)
+		set(CMAKE_CXX_COMPILER_TARGET x86_64-w64-mingw32)
+		set(CMAKE_LINKER_TYPE LLD)
+	EOF
+
+	cat - <<-EOF > gcc.cmake
+		set(CMAKE_SYSTEM_NAME Windows)
+		set(CMAKE_SYSTEM_PROCESSOR x86_64)
+		set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+		set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+		set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+		set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+		set(CMAKE_GET_RUNTIME_DEPENDENCIES_PLATFORM "windows+pe")
+		set(CMAKE_FIND_ROOT_PATH /usr/x86_64-w64-mingw32)
+		set(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc)
+		set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
+		set(CMAKE_RC_COMPILER x86_64-w64-mingw32-windres)
+		set(CMAKE_STRIP x86_64-w64-mingw32-strip)
+	EOF
+
+	cmake -G Ninja -S ../llvm/llvm $options \
+		-DLLVM_HOST_TRIPLE=x86_64-w64-mingw32 \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_INSTALL_PREFIX="$(pwd)/clang-cross" \
+		-DLLVM_ENABLE_PROJECTS="clang;lld" \
+		-DLLVM_TARGETS_TO_BUILD="${LLVM_TARGETS}" \
+		-DCLANG_LINK_CLANG_DYLIB=ON \
+		-DLLVM_LINK_LLVM_DYLIB=ON \
+		-DLLVM_INSTALL_TOOLCHAIN_ONLY=ON \
+		-DENABLE_LINKER_BUILD_ID=ON \
+		-DCLANG_DEFAULT_LINKER=lld \
+		-DCLANG_DEFAULT_PIE_ON_LINUX=ON \
+		-DLLVM_ENABLE_EH=ON \
+		-DLLVM_ENABLE_RTTI=ON \
+		-DLLVM_ENABLE_ZLIB=ON
+	ninja install/strip
+	sudo chown -R root:root clang-cross
+	echo -e "\nCreating \"clang-cross.tar.xz\" ...\n"
+	tar -cJvf "../clang-cross.tar.xz" clang-cross
+	popd
+	sudo rm -rf build-llvm
+}
+
+
+build_target()
+{
+	local TARGET="$1"
+	local HOST_NAME="$2"
+	. targets/${TARGET}/config
+
+	sudo rm -rf build
+	mkdir build
+	pushd build
+
+	tar -xf "../clang-cross.tar.xz"
+	sudo chown -R $(id -u):$(id -g) clang-cross
+	sudo rm -rf ${TARGET}
+	if [ -f "../${TARGET}.tar.xz" ]; then
+		tar -xf "../${TARGET}.tar.xz"
+	else
+		local url=""
+		case ${TARGET} in
+			*-gnu*)
+				url="${GH_URL_GNU}/gnu-cross/releases/download/${GH_VER_GNU}/${TARGET}.tar.xz"
+				;;
+			*-musl*)
+				url="${GH_URL_MUSL}/musl-cross/releases/download/${GH_VER_MUSL}/${TARGET}.tar.xz"
+				;;
+			*)
+				echo "Target not supported (${TARGET})."
+				return 1
+				;;
+		esac
+		wget -O - -T 120 --tries=20 "$url" | tar xJ
+	fi
+	find ${TARGET} -exec chmod +w {} \;
+	cp -a ${TARGET}/include clang-cross/
+	cp -a ${TARGET}/lib/gcc clang-cross/lib/
+	cp -a ${TARGET}/${TARGET} clang-cross/
+	rm -rf clang-cross/lib/gcc/${TARGET}/*/{install-tools,plugin}
+	rm -rf clang-cross/${TARGET}/{bin,debug-root,lib}
+	for n in clang:clang clang++:clang++ cpp:clang-cpp; do
+		cat > clang-cross/bin/${TARGET}-${n%%:*} <<-EOF
+			#!/bin/sh
+
+			TARGET=${TARGET}
+			BINDIR=\$(dirname "\$0")
+
+			exec "\${BINDIR}/${n##*:}" --target=\${TARGET} --sysroot=\${BINDIR}/../\${TARGET}/sysroot ${CLANG_ARGS} "\$@"
+		EOF
+		chmod +x clang-cross/bin/${TARGET}-${n%%:*}
+		cat > clang-cross/bin/${n##*:}.cfg <<-EOF
+			--target=${TARGET}
+			--sysroot=<CFGDIR>/../${TARGET}/sysroot
+			${CLANG_ARGS}
+		EOF
+	done
+	ln -sf ${TARGET}-clang clang-cross/bin/${TARGET}-cc
+	ln -sf ${TARGET}-clang++ clang-cross/bin/${TARGET}-c++
+	for n in ar:ar c++filt:cxxfilt nm:nm objcopy:objcopy objdump:objdump ranlib:ranlib size:size strings:strings strip:strip; do
+		cat > clang-cross/bin/${TARGET}-${n%%:*} <<-EOF
+			#!/bin/sh
+
+			BINDIR=\$(dirname "\$0")
+
+			exec "\${BINDIR}/llvm-${n##*:}" "\$@"
+		EOF
+		chmod +x clang-cross/bin/${TARGET}-${n%%:*}
+	done
+	find clang-cross -exec chmod a-w {} \;
+
+	# Tarballs
+	sudo rm -rf ${TARGET}
+	mv clang-cross ${TARGET}
+	sudo chown -R root:root ${TARGET}
+
+	if [ -n "$HOST_NAME" ]; then
+		local name="clang-${HOST_NAME}_${TARGET}.zip"
+	else
+		local name="clang-${TARGET}.zip"
+	fi
+	echo -e "\nCreating \"${name}\" ...\n"
+	zip -r "../${name}" "${TARGET}"
+	local hash="$(sha256sum "../${name}" | awk '{ print $1 }')"
+	printf '%s *%s\n' "$hash" "$name" > "../${name}.sha256"
+	popd
+	sudo rm -rf build
+}
+
+
+TARGET=$1
+COMPILER=$2
+HOST_NAME=$3
+
+if [ -z "$TARGET" ]; then
+	echo "[ERROR] Target is missing."
+	exit 1
+fi
+
+if [[ $TARGET != "llvm" && ! -f "targets/${TARGET}/config" ]]; then
+	echo "[ERROR] Target not supported (${TARGET})."
+	exit 1
+fi
+
+install_packages "$TARGET" "$COMPILER"
+
+if [ ! -f "clang-cross.tar.xz" ]; then
+	build_llvm "$COMPILER"
+fi
+
+if [ "$TARGET" != "llvm" ]; then
+	build_target "$TARGET" "$HOST_NAME"
+fi
+
+echo -e "\nDone.\n"
