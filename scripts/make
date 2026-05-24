@@ -78,7 +78,7 @@ build_llvm()
 	ninja install/strip
 	sudo chown -R root:root clang-cross
 	echo -e "\nCreating \"clang-cross.tar.xz\" ...\n"
-	tar -cJvf ../clang-cross.tar.xz clang-cross
+	tar -cJvf "../clang-cross.tar.xz" clang-cross
 	popd
 	sudo rm -rf build-llvm
 }
@@ -87,13 +87,14 @@ build_llvm()
 build_target()
 {
 	local TARGET="$1"
+	local HOST_NAME="$2"
 	. targets/${TARGET}/config
 
 	sudo rm -rf build
 	mkdir build
 	pushd build
 
-	tar -xf ../clang-cross.tar.xz
+	tar -xf "../clang-cross.tar.xz"
 	sudo chown -R $(id -u):$(id -g) clang-cross
 	sudo rm -rf ${TARGET}
 	if [ -f "../${TARGET}.tar.xz" ]; then
@@ -149,13 +150,21 @@ build_target()
 		chmod +x clang-cross/bin/${TARGET}-${n%%:*}
 	done
 	find clang-cross -exec chmod a-w {} \;
+
+	# Tarballs
 	sudo rm -rf ${TARGET}
 	mv clang-cross ${TARGET}
 	sudo chown -R root:root ${TARGET}
-	name="clang-${TARGET}"
-	echo -e "\nCreating \"${name}.tar.xz\" ...\n"
-	tar -cJvf ../${name}.tar.xz ${TARGET}
-	sha256sum ../${name}.tar.xz | awk '{ print $1 }' > ../${name}.tar.xz.sha256
+
+	if [ -n "$HOST_NAME" ]; then
+		local name="clang-${HOST_NAME}_${TARGET}.tar.xz"
+	else
+		local name="clang-${TARGET}.tar.xz"
+	fi
+	echo -e "\nCreating \"${name}\" ...\n"
+	tar -cJvf "../${name}" "${TARGET}"
+	local hash="$(sha256sum "../${name}" | awk '{ print $1 }')"
+	printf '%s *%s\n' "$hash" "$name" > "../${name}.sha256"
 	popd
 	sudo rm -rf build
 }
@@ -163,6 +172,7 @@ build_target()
 
 TARGET=$1
 COMPILER=$2
+HOST_NAME=$3
 
 if [ -z "$TARGET" ]; then
 	echo "[ERROR] Target is missing."
@@ -181,7 +191,7 @@ if [ ! -f "clang-cross.tar.xz" ]; then
 fi
 
 if [ "$TARGET" != "llvm" ]; then
-	build_target "$TARGET"
+	build_target "$TARGET" "$HOST_NAME"
 fi
 
 echo -e "\nDone.\n"

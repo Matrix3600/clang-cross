@@ -10,6 +10,7 @@ permissions:
 
 env:
   TOOLCHAIN_HOST: aarch64-unknown-linux-gnu
+  TOOLCHAIN_HOST_NAME: linux-arm64
 
 jobs:
   build-sysroot:
@@ -42,7 +43,7 @@ jobs:
       - name: Download sysroot
         uses: actions/download-artifact@v8
         with:
-          name: sysroot-${{ env.TOOLCHAIN_HOST }}
+          name: "sysroot-${{ env.TOOLCHAIN_HOST }}"
       - name: Build
         run: |
           sudo rm -rf /opt/clang-cross
@@ -50,7 +51,7 @@ jobs:
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
-          name: clang-cross-${{ env.TOOLCHAIN_HOST }}
+          name: "clang-cross-${{ env.TOOLCHAIN_HOST }}"
           path: "clang-cross-*.tar.xz"
           if-no-files-found: error
           retention-days: 1
@@ -116,7 +117,7 @@ jobs:
       - name: Download clang-cross
         uses: actions/download-artifact@v8
         with:
-          name: clang-cross-${{ env.TOOLCHAIN_HOST }}
+          name: "clang-cross-${{ env.TOOLCHAIN_HOST }}"
       - name: Build
         run: |
           sudo rm -rf /opt/clang-cross
@@ -124,7 +125,7 @@ jobs:
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
-          name: clang-${{ env.TOOLCHAIN_HOST }}_${{ matrix.target }}
+          name: clang-${{ env.TOOLCHAIN_HOST_NAME }}_${{ matrix.target }}
           path: "clang-*_${{ matrix.target }}.tar.xz*"
           if-no-files-found: error
           retention-days: 1
@@ -145,7 +146,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           path: release
-          pattern: "clang-${{ env.TOOLCHAIN_HOST }}_*-*-*"
+          pattern: "clang-${{ env.TOOLCHAIN_HOST_NAME }}_*-*-*"
           merge-multiple: true
       - name: Create release
         env:
@@ -158,6 +159,10 @@ jobs:
               --title="$tag" \
               --generate-notes --draft
           fi
+          hashfile="@clang-${{ env.TOOLCHAIN_HOST_NAME }}-SHA256SUMS"
+          rm -f "$hashfile"
           for name in release/*.tar.xz; do
-            gh release upload "$tag" "$name" "$name.sha256"
+            gh release upload "$tag" "$name"
+            cat "${name}.sha256" >> "$hashfile"
           done
+          gh release upload "$tag" "$hashfile"
