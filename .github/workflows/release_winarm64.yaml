@@ -10,7 +10,7 @@ permissions:
 
 env:
   TOOLCHAIN_HOST: aarch64-w64-mingw32
-  TOOLCHAIN_HOST_NAME: win-x64
+  TOOLCHAIN_HOST_NAME: win-arm64
 
 jobs:
   build-llvm:
