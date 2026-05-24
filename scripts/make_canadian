@@ -363,6 +363,8 @@ function build_target()
 			host_name="linux-arm64" ;;
 		x86_64-linux-gnu)
 			host_name="linux-x64" ;;
+		aarch64-w64-mingw32)
+			host_name="win-arm64" ;;
 		x86_64-w64-mingw32)
 			host_name="win-x64" ;;
 	esac
