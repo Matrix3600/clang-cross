@@ -7,7 +7,7 @@ GH_URL_MUSL="https://github.com/Matrix3600"
 GH_URL_CLANG="https://github.com/Matrix3600"
 GH_VER_GNU=20260515
 GH_VER_MUSL=20260515
-GH_VER_CLANG=arm64-20260520-pre
+GH_VER_CLANG=win64-20260524-pre
 
 GH_URL_LLVM_MINGW="https://github.com/mstorsjo"
 GH_VER_LLVM_MINGW=20260519
