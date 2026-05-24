@@ -7,7 +7,7 @@ GH_URL_MUSL="https://github.com/Matrix3600"
 GH_URL_CLANG="https://github.com/Matrix3600"
 GH_VER_GNU=20260515
 GH_VER_MUSL=20260515
-GH_VER_CLANG=win64-20260524-pre
+GH_VER_CLANG=xxx64-20260524-pre
 
 GH_URL_LLVM_MINGW="https://github.com/mstorsjo"
 GH_VER_LLVM_MINGW=20260519
@@ -382,7 +382,7 @@ function build_target()
 	else
 		local name="clang-${host_name}_${TARGET}.7z"
 		echo -e "\nCreating \"${name}\" ...\n"
-		7z a -mx9 -mmt1 "../${name}" "${TARGET}"
+		7z a -mx9 "../${name}" "${TARGET}"
 	fi
 	local hash="$(sha256sum "../${name}" | awk '{ print $1 }')"
 	printf '%s *%s\n' "$hash" "$name" > "../${name}.sha256"

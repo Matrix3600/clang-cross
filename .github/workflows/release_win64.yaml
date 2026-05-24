@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [build-llvm]
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         target:
           - aarch64-unknown-linux-gnu
