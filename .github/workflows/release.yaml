@@ -3,7 +3,7 @@ name: Release
 on:
   workflow_dispatch:
   push:
-    tags: ['*', '!arm64-*', '!test-*']
+    tags: ['*', '!arm64-*', '!win64-*', '!test-*']
 
 permissions:
   contents: read

@@ -232,9 +232,9 @@ function build_llvm()
 
 		set_cmake_var FIND_ROOT_PATH "$(pwd)/${SYSROOT_NAME}/${HOST_NAME}"
 		set_cmake_var GET_RUNTIME_DEPENDENCIES_PLATFORM "windows+pe"
-		set_cmake_var C_COMPILER x86_64-w64-mingw32-clang
-		set_cmake_var CXX_COMPILER x86_64-w64-mingw32-clang++
-		set_cmake_var STRIP x86_64-w64-mingw32-strip
+		set_cmake_var C_COMPILER "${HOST_NAME}-clang"
+		set_cmake_var CXX_COMPILER "${HOST_NAME}-clang++"
+		set_cmake_var STRIP "${HOST_NAME}-strip"
 
 		# Dynamic library for host
 		mkdir -p "clang-cross/bin"
@@ -367,7 +367,7 @@ function build_target()
 			host_name="win-x64" ;;
 	esac
 	if ! is_linux_host "$HOST"; then
-		rename_files_windows "musl-cross/${TARGET}"
+		rename_files_windows "clang-cross/${TARGET}"
 	fi
 
 	# Tarballs
