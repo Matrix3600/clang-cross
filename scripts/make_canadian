@@ -6,8 +6,8 @@ GH_URL_GNU="https://github.com/cross-tools"
 GH_URL_MUSL="https://github.com/Matrix3600"
 GH_URL_CLANG="https://github.com/Matrix3600"
 GH_VER_GNU=20260515
-GH_VER_MUSL=20260515
-GH_VER_CLANG=xxx64-20260524-pre
+GH_VER_MUSL=20260525
+GH_VER_CLANG=xxx64-20260525-pre
 
 GH_URL_LLVM_MINGW="https://github.com/mstorsjo"
 GH_VER_LLVM_MINGW=20260519
@@ -305,13 +305,14 @@ function build_target()
 	if [ -f "../${TARGET}.tar.xz" ]; then
 		tar -xf "../${TARGET}.tar.xz"
 	else
+		local name="linux-x64_${TARGET}.tar.xz"
 		local url=""
 		case ${TARGET} in
 			*-gnu*)
 				url="${GH_URL_GNU}/gnu-cross/releases/download/${GH_VER_GNU}/${TARGET}.tar.xz"
 				;;
 			*-musl*)
-				url="${GH_URL_MUSL}/musl-cross/releases/download/${GH_VER_MUSL}/${TARGET}.tar.xz"
+				url="${GH_URL_MUSL}/musl-cross/releases/download/${GH_VER_MUSL}/${name}"
 				;;
 			*)
 				echo "Target not supported (${TARGET})."
@@ -357,6 +358,10 @@ function build_target()
 
 	find clang-cross -exec chmod a-w {} \;
 
+	if ! is_linux_host "$HOST"; then
+		rename_files_windows "clang-cross/${TARGET}"
+	fi
+
 	local host_name="$(sed 's/-unknown//g' <<< "$HOST")"
 	case $host_name in
 		aarch64-linux-gnu)
@@ -368,9 +373,6 @@ function build_target()
 		x86_64-w64-mingw32)
 			host_name="win-x64" ;;
 	esac
-	if ! is_linux_host "$HOST"; then
-		rename_files_windows "clang-cross/${TARGET}"
-	fi
 
 	# Tarballs
 	sudo rm -rf ${TARGET}

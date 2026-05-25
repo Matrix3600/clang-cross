@@ -104,8 +104,6 @@ function build_target()
 	local TARGET="$1"
 	. targets/${TARGET}/config
 
-	local host_name="$(get_build_machine_type)"
-
 	sudo rm -rf build
 	mkdir build
 	pushd build
@@ -116,7 +114,7 @@ function build_target()
 	if [ -f "../${TARGET}.tar.xz" ]; then
 		tar -xf "../${TARGET}.tar.xz"
 	else
-		local name="${host_name}_${TARGET}.tar.xz"
+		local name="linux-x64_${TARGET}.tar.xz"
 		local url=""
 		case ${TARGET} in
 			*-gnu*)
@@ -172,6 +170,8 @@ function build_target()
 	sudo rm -rf ${TARGET}
 	mv clang-cross ${TARGET}
 	sudo chown -R root:root ${TARGET}
+
+	local host_name="$(get_build_machine_type)"
 
 	local name="clang-${host_name}_${TARGET}.tar.xz"
 	echo -e "\nCreating \"${name}\" ...\n"
