@@ -8,6 +8,7 @@ These ready-to-use toolchains run on:
 - Linux x86-64
 - Linux ARM64
 - Windows x86-64
+- Windows ARM64
 
 
 ## Supported targets
