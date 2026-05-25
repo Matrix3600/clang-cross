@@ -85,11 +85,13 @@ This builds the files and creates a draft release.
 
 The host architecture (on which the toolchains run) depends on the beginning of the tag name:
 - "arm64-" for Linux ARM64
+- "win64-" for Windows x86-64
+- "winarm64-" for Windows ARM64
 - any other for Linux x86-64
 
 Otherwise you can also publish a release directly.
 
-Or build manually:
+Or build manually for your machine's architecture:
 ```sh
 ./scripts/make ${target}
 ```

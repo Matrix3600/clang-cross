@@ -7,14 +7,83 @@ GH_URL_MUSL="https://github.com/Matrix3600"
 GH_URL_CLANG="https://github.com/Matrix3600"
 GH_VER_GNU=20260515
 GH_VER_MUSL=20260515
-GH_VER_CLANG=arm64-20260520-pre
+GH_VER_CLANG=xxx64-20260524-pre
+
+GH_URL_LLVM_MINGW="https://github.com/mstorsjo"
+GH_VER_LLVM_MINGW=20260519
+GH_UBNT_VER_LLVM_MINGW=22.04
 
 LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 
 
-install_packages()
+#
+# Rename conflicting files on case-insensitive file systems.
+#
+
+#
+# Rename conflicting filenames in include directives.
+#
+function rename_includes()
+{
+	if [ -n "$2" ]; then
+		local pattern=""
+		for name in $2; do
+			pattern="${pattern}${pattern:+\\|}${name}"
+		done
+		find "$1" -type f -print0 | while IFS= read -r -d '' file; do
+			sed -i -b -e "s@\(#include\s*<linux/\(${pattern}\)\)\(\.h>\)@\1_1\3@g" "$file"
+			if [ $? != 0 ]; then return 1; fi
+		done
+	fi
+}
+
+#
+# Rename conflicting files.
+#
+function rename_files_windows()
+{
+	local rename_file_list="\
+		netfilter/xt_connmark \
+		netfilter/xt_dscp \
+		netfilter/xt_mark \
+		netfilter/xt_rateest \
+		netfilter/xt_tcpmss \
+		netfilter_ipv4/ipt_ecn \
+		netfilter_ipv4/ipt_ttl \
+		netfilter_ipv6/ip6t_hl"
+
+	local renamed_files=""
+	local root_dir="${1}/sysroot/usr/include/linux"
+	find "$root_dir" -exec chmod +w {} \;
+	for name in $rename_file_list ;	do
+		local ext=".h"
+		if [ -f "${root_dir}/${name}${ext}" ]; then
+			echo "Renaming \"${root_dir}/${name}${ext}\" to \"${name}_1${ext}\""
+			mv "${root_dir}/${name}${ext}" "${root_dir}/${name}_1${ext}"
+			if [ $? != 0 ]; then return 1; fi
+			renamed_files="${renamed_files} ${name}"
+		fi
+	done
+	rename_includes "$root_dir" "${renamed_files}"
+	if [ $? != 0 ]; then return 1; fi
+	find "$root_dir" -exec chmod a-w {} \;
+}
+
+
+function is_linux_host()
+{
+	if [[ $1 =~ mingw ]]; then
+		return 1	# false
+	else
+		return 0	# true
+	fi
+}
+
+
+function install_packages()
 {
 	local modules="$1"
+	local host="$2"
 	if [ -z "$modules" ]; then
 		modules="sysroot llvm targets"
 	fi
@@ -43,6 +112,11 @@ install_packages()
 				"
 				;;
 			*)	# Targets
+				if ! is_linux_host "$host"; then
+					packages="${packages} \
+						7zip \
+					"
+				fi
 				;;
 		esac
 	done
@@ -51,7 +125,7 @@ install_packages()
 }
 
 
-build_sysroot()
+function build_sysroot()
 {
 	local HOST="$1"
 	local HOST_NAME=$(sed 's/-unknown//g' <<< "$HOST")
@@ -85,72 +159,112 @@ build_sysroot()
 }
 
 
-build_llvm()
+function set_cmake_var()
+{
+	printf 'set(CMAKE_%s "%s")\n' "$1" "$2" >> "toolchain.cmake"
+}
+
+
+function build_llvm()
 {
 	local HOST="$1"
 	local HOST_NAME=$(sed 's/-unknown//g' <<< "$HOST")
 
-	local SYSROOT_NAME="sysroot-${HOST_NAME}"
-	local CLANG_ARGS=""
+	local SYSROOT_NAME=""
+	local CC_FLAGS=""
 
 	sudo rm -rf build-llvm
 	mkdir build-llvm
 	pushd build-llvm
 
-	sudo rm -rf "${SYSROOT_NAME}"
-	sudo tar -xf "../sysroot-${HOST}.tar.xz"
+	rm -f toolchain.cmake
+	set_cmake_var SYSTEM_PROCESSOR "${HOST%%-*}"
 
-	if [ ! -d "${SYSROOT_NAME}/usr/lib/${HOST_NAME}" ]; then
-		echo "[ERROR] Host ${HOST_NAME} not found in sysroot usr/lib."
-		return 1
-	fi
+	if is_linux_host "$HOST"; then
+		set_cmake_var SYSTEM_NAME Linux
+		SYSROOT_NAME="sysroot-${HOST_NAME}"
+		set_cmake_var SYSROOT "$(pwd)/${SYSROOT_NAME}"
 
-	# Search latest llvm-strip in PATH
-	local llvm_strip=""
-	local version=0
-	IFS=:
-	for p in $PATH; do
-		unset IFS
-		for name in ${p}/llvm-strip*; do
-			if [[ -f $name && $name =~ /llvm-strip(|-([0-9]+))$ ]]; then
-				echo "$name"
-				local v=${BASH_REMATCH[2]}
-				if [ -z "$v" ]; then v=1; fi
-				if [[ $v -gt $version ]]; then
-					llvm_strip=$name
-					version=$v
+		sudo rm -rf "${SYSROOT_NAME}"
+		sudo tar -xf "../sysroot-${HOST}.tar.xz"
+		if [ ! -d "${SYSROOT_NAME}/usr/lib/${HOST_NAME}" ]; then
+			echo "[ERROR] Host ${HOST_NAME} not found in sysroot usr/lib."
+			return 1
+		fi
+
+		set_cmake_var C_COMPILER clang
+		set_cmake_var CXX_COMPILER clang++
+
+		# Search latest llvm-strip in PATH
+		local llvm_strip=""
+		local version=0
+		IFS=:
+		for p in $PATH; do
+			unset IFS
+			for name in ${p}/llvm-strip*; do
+				if [[ -f $name && $name =~ /llvm-strip(|-([0-9]+))$ ]]; then
+					echo "$name"
+					local v=${BASH_REMATCH[2]}
+					if [ -z "$v" ]; then v=1; fi
+					if [[ $v -gt $version ]]; then
+						llvm_strip=$name
+						version=$v
+					fi
 				fi
+			done
+		done
+		unset IFS
+		if [ -n "$llvm_strip" ]; then
+			set_cmake_var STRIP "$llvm_strip"
+		fi
+	else
+		set_cmake_var SYSTEM_NAME Windows
+		SYSROOT_NAME="llvm-mingw"
+		local name="llvm-mingw-${GH_VER_LLVM_MINGW}-msvcrt-ubuntu-${GH_UBNT_VER_LLVM_MINGW}-x86_64"
+		local url="${GH_URL_LLVM_MINGW}/llvm-mingw/releases/download/${GH_VER_LLVM_MINGW}/${name}.tar.xz"
+		wget -O - -nv -T 120 --tries=20 "$url" | tar xJ
+		mv "$name" "${SYSROOT_NAME}"
+		export PATH="$(pwd)/${SYSROOT_NAME}/bin:$PATH"
+		if [ ! -d "${SYSROOT_NAME}/${HOST_NAME}" ]; then
+			echo "[ERROR] Host ${HOST_NAME} not supported by llvm-mingw."
+			return 1
+		fi
+
+		set_cmake_var FIND_ROOT_PATH "$(pwd)/${SYSROOT_NAME}/${HOST_NAME}"
+		set_cmake_var GET_RUNTIME_DEPENDENCIES_PLATFORM "windows+pe"
+		set_cmake_var C_COMPILER "${HOST_NAME}-clang"
+		set_cmake_var CXX_COMPILER "${HOST_NAME}-clang++"
+		set_cmake_var STRIP "${HOST_NAME}-strip"
+
+		# Dynamic library for host
+		mkdir -p "clang-cross/bin"
+		host_lib="${SYSROOT_NAME}/${HOST_NAME}/bin"
+		for f in "${host_lib}"/lib*.dll ; do
+			if [ -f "$f" ]; then
+				echo "Copying \"$f\" to \"clang-cross/bin/\""
+				cp "$f" "clang-cross/bin/"
 			fi
 		done
-	done
-	unset IFS
-	local options=""
-	if [ -n "$llvm_strip" ]; then
-		options="\
-			-DCMAKE_STRIP="$llvm_strip" \
-		"
 	fi
-	echo "Using options:" $options
 
-	cat - <<-EOF > clang.cmake
-		set(CMAKE_SYSTEM_NAME Linux)
-		set(CMAKE_SYSROOT "$(pwd)/${SYSROOT_NAME}")
+	cat - <<-EOF >> toolchain.cmake
 		set(CMAKE_C_COMPILER_TARGET $HOST_NAME)
 		set(CMAKE_CXX_COMPILER_TARGET $HOST_NAME)
-		set(CMAKE_C_FLAGS_INIT "$CLANG_ARGS")
-		set(CMAKE_CXX_FLAGS_INIT "$CLANG_ARGS")
+		set(CMAKE_C_FLAGS_INIT "$CC_FLAGS")
+		set(CMAKE_CXX_FLAGS_INIT "$CC_FLAGS")
 		set(CMAKE_LINKER_TYPE LLD)
-		set(CMAKE_C_COMPILER clang)
-		set(CMAKE_CXX_COMPILER clang++)
 		set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 		set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 		set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 		set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 	EOF
 
-	cmake -G Ninja -S ../llvm/llvm $options \
+	echo -e "\n*** CMAKE toolchain file ***\n"
+	cat toolchain.cmake
+
+	cmake -G Ninja -S ../llvm/llvm \
 		-DCMAKE_BUILD_TYPE=Release \
-		-DCMAKE_TOOLCHAIN_FILE="$(pwd)/clang.cmake" \
+		-DCMAKE_TOOLCHAIN_FILE="$(pwd)/toolchain.cmake" \
 		-DCMAKE_INSTALL_PREFIX="$(pwd)/clang-cross" \
 		-DLLVM_ENABLE_PROJECTS="clang;lld" \
 		-DLLVM_HOST_TRIPLE=${HOST_NAME} \
@@ -165,6 +279,7 @@ build_llvm()
 		-DLLVM_ENABLE_RTTI=ON \
 		-DLLVM_ENABLE_ZLIB=ON
 	ninja install/strip
+
 	sudo chown -R root:root clang-cross
 	echo -e "\nCreating \"clang-cross-${HOST}.tar.xz\" ...\n"
 	tar -cJvf "../clang-cross-${HOST}.tar.xz" clang-cross
@@ -173,10 +288,11 @@ build_llvm()
 }
 
 
-build_target()
+function build_target()
 {
 	local HOST="$1"
 	local TARGET="$2"
+	local CLANG_ARGS=""
 	. targets/${TARGET}/config
 
 	sudo rm -rf build
@@ -202,7 +318,7 @@ build_target()
 				return 1
 				;;
 		esac
-		wget -O - -T 120 --tries=20 "$url" | tar xJ
+		wget -O - -nv -T 120 --tries=20 "$url" | tar xJ
 	fi
 	find ${TARGET} -exec chmod +w {} \;
 	cp -a ${TARGET}/include clang-cross/
@@ -238,6 +354,7 @@ build_target()
 		EOF
 		chmod +x clang-cross/bin/${TARGET}-${n%%:*}
 	done
+
 	find clang-cross -exec chmod a-w {} \;
 
 	local host_name="$(sed 's/-unknown//g' <<< "$HOST")"
@@ -246,16 +363,29 @@ build_target()
 			host_name="linux-arm64" ;;
 		x86_64-linux-gnu)
 			host_name="linux-x64" ;;
+		aarch64-w64-mingw32)
+			host_name="win-arm64" ;;
+		x86_64-w64-mingw32)
+			host_name="win-x64" ;;
 	esac
+	if ! is_linux_host "$HOST"; then
+		rename_files_windows "clang-cross/${TARGET}"
+	fi
 
 	# Tarballs
 	sudo rm -rf ${TARGET}
 	mv clang-cross ${TARGET}
 	sudo chown -R root:root ${TARGET}
 
-	local name="clang-${host_name}_${TARGET}.tar.xz"
-	echo -e "\nCreating \"${name}\" ...\n"
-	tar -cJvf "../${name}" "${TARGET}"
+	if is_linux_host "$HOST"; then
+		local name="clang-${host_name}_${TARGET}.tar.xz"
+		echo -e "\nCreating \"${name}\" ...\n"
+		tar -cJvf "../${name}" "${TARGET}"
+	else
+		local name="clang-${host_name}_${TARGET}.7z"
+		echo -e "\nCreating \"${name}\" ...\n"
+		7z a -mx9 "../${name}" "${TARGET}"
+	fi
 	local hash="$(sha256sum "../${name}" | awk '{ print $1 }')"
 	printf '%s *%s\n' "$hash" "$name" > "../${name}.sha256"
 	popd
@@ -282,15 +412,16 @@ if [[ $TARGET != "sysroot" && $TARGET != "llvm" && \
 	exit 1
 fi
 
-install_packages "$TARGET"
+install_packages "$TARGET" "$HOST"
 
-if [[ ! -f "sysroot-${HOST}.tar.xz" && ! -f "clang-cross-${HOST}.tar.xz" ]]; then
+if is_linux_host "$HOST" && [[ ! -f "sysroot-${HOST}.tar.xz" && \
+		! -f "clang-cross-${HOST}.tar.xz" ]]; then
 	build_sysroot "$HOST"
 fi
 
 if [[ $TARGET != "sysroot" && ! -f "clang-cross-${HOST}.tar.xz" ]]; then
 	url="${GH_URL_CLANG}/clang-cross/releases/download/${GH_VER_CLANG}/clang-cross-${HOST}.tar.xz"
-	if ! wget -nv -nc -T 120 --tries=20 --progress=dot:binary "$url"; then
+	if ! wget -nv -nc -T 120 --tries=20 "$url" 2>/dev/null; then
 		build_llvm "$HOST"
 	fi
 fi
