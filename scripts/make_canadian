@@ -7,7 +7,7 @@ GH_URL_MUSL="https://github.com/Matrix3600"
 GH_URL_CLANG="https://github.com/Matrix3600"
 GH_VER_GNU=20260515
 GH_VER_MUSL=20260525
-GH_VER_CLANG=xxx64-20260525-pre
+GH_VER_CLANG=xxx64-20260526-pre
 
 GH_URL_LLVM_MINGW="https://github.com/mstorsjo"
 GH_VER_LLVM_MINGW=20260519
@@ -137,8 +137,12 @@ function build_sysroot()
 			arch_name="arm64"
 			suite="stable"
 			;;
+		riscv64-linux-*)
+			arch_name="riscv64"
+			suite="unstable"
+			;;
 		*)
-			echo "Target not supported (${HOST})."
+			echo "Host not supported (${HOST})."
 			return 1
 			;;
 	esac
@@ -366,10 +370,12 @@ function build_target()
 	case $host_name in
 		aarch64-linux-gnu)
 			host_name="linux-arm64" ;;
-		x86_64-linux-gnu)
-			host_name="linux-x64" ;;
 		aarch64-w64-mingw32)
 			host_name="win-arm64" ;;
+		riscv64-linux-gnu)
+			host_name="linux-riscv64" ;;
+		x86_64-linux-gnu)
+			host_name="linux-x64" ;;
 		x86_64-w64-mingw32)
 			host_name="win-x64" ;;
 	esac
