@@ -1,4 +1,4 @@
-name: Release
+name: Release Linux x64
 
 on:
   workflow_dispatch:
@@ -98,7 +98,7 @@ jobs:
       - name: Build
         run: |
           sudo rm -rf /opt/clang-cross
-          ./scripts/make "${{ matrix.target }}" "" "${{ env.TOOLCHAIN_HOST_NAME }}"
+          ./scripts/make "${{ matrix.target }}"
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:

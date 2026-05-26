@@ -5,9 +5,24 @@ set -e -o pipefail
 GH_URL_GNU="https://github.com/cross-tools"
 GH_URL_MUSL="https://github.com/Matrix3600"
 GH_VER_GNU=20260515
-GH_VER_MUSL=20260515
+GH_VER_MUSL=20260525
 
 LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
+
+
+function get_build_machine_type()
+{
+	local system="linux"
+	local arch=""
+	case $(uname -m) in
+		i?86) arch="x86" ;;
+		x86_64) arch="x64" ;;
+		aarch64*|arm64|armv8*) arch="arm64" ;;
+	esac
+	if [ -n "$arch" ]; then printf '%s\n' "${system}-${arch}"
+	else printf '%s\n' "$system"
+	fi
+}
 
 
 function install_packages()
@@ -87,7 +102,6 @@ function build_llvm()
 function build_target()
 {
 	local TARGET="$1"
-	local HOST_NAME="$2"
 	. targets/${TARGET}/config
 
 	sudo rm -rf build
@@ -100,13 +114,14 @@ function build_target()
 	if [ -f "../${TARGET}.tar.xz" ]; then
 		tar -xf "../${TARGET}.tar.xz"
 	else
+		local name="linux-x64_${TARGET}.tar.xz"
 		local url=""
 		case ${TARGET} in
 			*-gnu*)
 				url="${GH_URL_GNU}/gnu-cross/releases/download/${GH_VER_GNU}/${TARGET}.tar.xz"
 				;;
 			*-musl*)
-				url="${GH_URL_MUSL}/musl-cross/releases/download/${GH_VER_MUSL}/${TARGET}.tar.xz"
+				url="${GH_URL_MUSL}/musl-cross/releases/download/${GH_VER_MUSL}/${name}"
 				;;
 			*)
 				echo "Target not supported (${TARGET})."
@@ -156,11 +171,9 @@ function build_target()
 	mv clang-cross ${TARGET}
 	sudo chown -R root:root ${TARGET}
 
-	if [ -n "$HOST_NAME" ]; then
-		local name="clang-${HOST_NAME}_${TARGET}.tar.xz"
-	else
-		local name="clang-${TARGET}.tar.xz"
-	fi
+	local host_name="$(get_build_machine_type)"
+
+	local name="clang-${host_name}_${TARGET}.tar.xz"
 	echo -e "\nCreating \"${name}\" ...\n"
 	tar -cJvf "../${name}" "${TARGET}"
 	local hash="$(sha256sum "../${name}" | awk '{ print $1 }')"
@@ -172,7 +185,6 @@ function build_target()
 
 TARGET=$1
 COMPILER=$2
-HOST_NAME=$3
 
 if [ -z "$TARGET" ]; then
 	echo "[ERROR] Target is missing."
@@ -191,7 +203,7 @@ if [ ! -f "clang-cross.tar.xz" ]; then
 fi
 
 if [ "$TARGET" != "llvm" ]; then
-	build_target "$TARGET" "$HOST_NAME"
+	build_target "$TARGET"
 fi
 
 echo -e "\nDone.\n"
