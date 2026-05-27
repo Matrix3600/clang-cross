@@ -12,6 +12,8 @@ LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 
 function get_build_machine_type()
 {
+	echo "uname -s: \"$(uname -s)\""
+	echo "uname -m: \"$(uname -m)\""
 	if [ "$OS" == "Windows_NT" ]; then
 		local system="win"
 	else
