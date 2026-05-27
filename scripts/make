@@ -42,17 +42,15 @@ function install_packages()
 		modules="llvm targets"
 	fi
 	brew update
-	local packages="wget xz-utils"
+	local packages="wget xz"
 
 	for module in $modules; do
 		case $module in
 			llvm)
 				packages="${packages} \
-					build-essential \
 					ca-certificates \
 					cmake \
-					libz-dev \
-					ninja-build \
+					ninja \
 					python3 \
 				"
 				case $compiler in
