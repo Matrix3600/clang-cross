@@ -41,7 +41,7 @@ function install_packages()
 	if [ -z "$modules" ]; then
 		modules="llvm targets"
 	fi
-	sudo brew update
+	brew update
 	local packages="wget xz-utils"
 
 	for module in $modules; do
@@ -64,7 +64,7 @@ function install_packages()
 		esac
 	done
 
-	sudo brew install $packages
+	brew install $packages
 }
 
 
