@@ -3,7 +3,7 @@ name: Release macOS x64
 on:
   workflow_dispatch:
   push:
-    tags: ['*', '!arm64-*', '!win64-*', '!winarm64-*', '!test-*']
+    tags: ['test-macos64-*']
 
 permissions:
   contents: read
