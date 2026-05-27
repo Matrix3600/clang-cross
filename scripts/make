@@ -12,11 +12,18 @@ LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 
 function get_build_machine_type()
 {
-	local system="linux"
+	if [ "$OS" == "Windows_NT" ]; then
+		local system="win"
+	else
+		local system="linux"
+		case $(uname -s) in
+			Darwin) system="macos" ;;
+		esac
+	fi
 	local arch=""
 	case $(uname -m) in
 		i?86) arch="x86" ;;
-		x86_64) arch="x64" ;;
+		x86_64|amd64) arch="x64" ;;
 		aarch64*|arm64|armv8*) arch="arm64" ;;
 	esac
 	if [ -n "$arch" ]; then printf '%s\n' "${system}-${arch}"
