@@ -1,7 +1,7 @@
 # clang-cross
 
 This is a simple and lightweight project for making a cross-compilation
-toolchain with the Clang compiler, and the gnu or musl C library.
+toolchain with the Clang compiler, and the GNU or Musl C library.
 
 These ready-to-use toolchains run on:
 
@@ -62,16 +62,29 @@ These ready-to-use toolchains run on:
 
 ## How to use
 
-Download the tarball from the [release page](https://github.com/Matrix3600/clang-cross/releases) and extract it to `/opt/x-tools/clang`:
+Download the tarball from the [release page](https://github.com/Matrix3600/clang-cross/releases).
+Choose the one that corresponds to the `host` system on which the toolchain will run, and the `target` for which you want to generate executables (from the list above).
 
-```sh
+The tarball names are `clang-<host>_<target>.tar.xz` for Linux,
+or `clang-<host>_<target>.7z` for Windows.
+
+On Linux, extract the tarball to `/opt/x-tools/clang`:
+```
 sudo mkdir -p /opt/x-tools/clang
-sudo tar -xf ${target}.tar.xz -C /opt/x-tools/clang
+sudo tar -xf clang-<host>_<target>.tar.xz -C /opt/x-tools/clang
 
-export PATH="/opt/x-tools/clang/${target}/bin:$PATH"
+export PATH="/opt/x-tools/clang/<target>/bin:$PATH"
 clang hello.c -o hello
 ```
-Replace `${target}` with one of the targets above.  
+
+On Windows, extract it to `C:\x-tools\clang`:
+```
+mkdir C:\x-tools\clang
+tar -xf clang-<host>_<target>.7z -C C:\x-tools\clang
+PATH=C:\x-tools\clang\<target>\bin;%PATH%
+clang hello.c -o hello
+```
+
 It is not necessary to specify the --sysroot and --target options for clang.
 
 ## How to build
@@ -93,8 +106,8 @@ The host architecture (on which the toolchains run) depends on the beginning of 
 Otherwise you can also publish a release directly.
 
 Or build manually for your machine's architecture:
-```sh
-./scripts/make ${target}
+```
+./scripts/make <target>
 ```
 
 ## License
