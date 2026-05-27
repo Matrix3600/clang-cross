@@ -54,7 +54,7 @@ function install_packages()
 					python3 \
 				"
 				case $compiler in
-					clang) packages="${packages} " ;;
+					clang) packages="${packages} lld" ;;
 				esac
 				;;
 			*)	# Targets
