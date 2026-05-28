@@ -14,14 +14,14 @@ LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 
 function get_build_machine_type()
 {
-	echo "uname -s: \"$(uname -s)\"" >&2
-	echo "uname -m: \"$(uname -m)\"" >&2
 	if [ "$OS" == "Windows_NT" ]; then
 		local system="win"
 	else
 		local system="linux"
 		case $(uname -s) in
+			Linux) ;;
 			Darwin) system="macos" ;;
+			*) echo "uname -s: \"$(uname -s)\"" >&2 ;;
 		esac
 	fi
 	local arch=""
@@ -29,6 +29,7 @@ function get_build_machine_type()
 		i?86) arch="x86" ;;
 		x86_64|amd64) arch="x64" ;;
 		aarch64*|arm64|armv8*) arch="arm64" ;;
+		*) echo "uname -m: \"$(uname -m)\"" >&2 ;;
 	esac
 	if [ -n "$arch" ]; then printf '%s\n' "${system}-${arch}"
 	else printf '%s\n' "$system"
@@ -87,7 +88,7 @@ function install_packages()
 		;;
 		macos)
 			brew update
-			brew install $packages
+			brew install --quiet $packages
 		;;
 	esac
 }
