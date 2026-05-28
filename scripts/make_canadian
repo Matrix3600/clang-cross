@@ -284,7 +284,7 @@ function build_llvm()
 		-DLLVM_ENABLE_ZLIB=ON
 	ninja install/strip
 
-	sudo chown -R root:root clang-cross
+	sudo chown -R root:0 clang-cross
 	echo -e "\nCreating \"clang-cross-${HOST}.tar.xz\" ...\n"
 	tar -cJvf "../clang-cross-${HOST}.tar.xz" clang-cross
 	popd
@@ -383,7 +383,7 @@ function build_target()
 	# Tarballs
 	sudo rm -rf ${TARGET}
 	mv clang-cross ${TARGET}
-	sudo chown -R root:root ${TARGET}
+	sudo chown -R root:0 ${TARGET}
 
 	if is_linux_host "$HOST"; then
 		local name="clang-${host_name}_${TARGET}.tar.xz"

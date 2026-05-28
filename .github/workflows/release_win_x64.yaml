@@ -1,49 +1,27 @@
-name: Release Linux ARM64
+name: Release Windows x64
 
 on:
   workflow_dispatch:
   push:
-    tags: ['arm64-*']
+    tags: ['win-x64-*']
 
 permissions:
   contents: read
 
 env:
-  TOOLCHAIN_HOST: aarch64-unknown-linux-gnu
-  TOOLCHAIN_HOST_NAME: linux-arm64
+  TOOLCHAIN_HOST: x86_64-w64-mingw32
+  TOOLCHAIN_HOST_NAME: win-x64
 
 jobs:
-  build-sysroot:
-    name: Build sysroot
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Build
-        run: |
-          ./scripts/make_canadian "${{ env.TOOLCHAIN_HOST }}" sysroot
-      - name: Upload package
-        uses: actions/upload-artifact@v7
-        with:
-          name: sysroot-${{ env.TOOLCHAIN_HOST }}
-          path: "sysroot-*.tar.xz"
-          if-no-files-found: error
-          retention-days: 1
-
   build-llvm:
     name: Build LLVM
     runs-on: ubuntu-24.04
-    needs: [build-sysroot]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 1
           submodules: true
-      - name: Download sysroot
-        uses: actions/download-artifact@v8
-        with:
-          name: "sysroot-${{ env.TOOLCHAIN_HOST }}"
       - name: Build
         run: |
           sudo rm -rf /opt/clang-cross
@@ -126,7 +104,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: clang-${{ env.TOOLCHAIN_HOST_NAME }}_${{ matrix.target }}
-          path: "clang-*_${{ matrix.target }}.tar.xz*"
+          path: "clang-*_${{ matrix.target }}.7z*"
           if-no-files-found: error
           retention-days: 1
 
@@ -161,7 +139,7 @@ jobs:
           fi
           hashfile="@clang-${{ env.TOOLCHAIN_HOST_NAME }}-SHA256SUMS"
           rm -f "$hashfile"
-          for name in release/*.tar.xz; do
+          for name in release/*.7z; do
             gh release upload "$tag" "$name"
             cat "${name}.sha256" >> "$hashfile"
           done

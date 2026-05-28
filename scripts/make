@@ -4,8 +4,10 @@ set -e -o pipefail
 
 GH_URL_GNU="https://github.com/cross-tools"
 GH_URL_MUSL="https://github.com/Matrix3600"
+GH_URL_CLANG="https://github.com/Matrix3600"
 GH_VER_GNU=20260515
 GH_VER_MUSL=20260525
+GH_VER_CLANG=test-20260528-pre
 
 LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 
@@ -17,7 +19,9 @@ function get_build_machine_type()
 	else
 		local system="linux"
 		case $(uname -s) in
+			Linux) ;;
 			Darwin) system="macos" ;;
+			*) echo "uname -s: \"$(uname -s)\"" >&2 ;;
 		esac
 	fi
 	local arch=""
@@ -25,6 +29,7 @@ function get_build_machine_type()
 		i?86) arch="x86" ;;
 		x86_64|amd64) arch="x64" ;;
 		aarch64*|arm64|armv8*) arch="arm64" ;;
+		*) echo "uname -m: \"$(uname -m)\"" >&2 ;;
 	esac
 	if [ -n "$arch" ]; then printf '%s\n' "${system}-${arch}"
 	else printf '%s\n' "$system"
@@ -39,22 +44,43 @@ function install_packages()
 	if [ -z "$modules" ]; then
 		modules="llvm targets"
 	fi
-	sudo apt-get update
-	local packages="wget xz-utils"
+	local system="$(get_build_machine_type)"
+	system=${system%%-*}
 
+	local packages="wget"
+	case $system in
+		linux)
+			packages="${packages} xz-utils" ;;
+		macos)
+			packages="${packages} xz" ;;
+	esac
 	for module in $modules; do
 		case $module in
 			llvm)
 				packages="${packages} \
-					build-essential \
 					ca-certificates \
 					cmake \
-					libz-dev \
-					ninja-build \
 					python3 \
 				"
-				case $compiler in
-					clang) packages="${packages} clang lld" ;;
+				case $system in
+					linux)
+						packages="${packages} \
+							build-essential \
+							libz-dev \
+							ninja-build \
+						"
+						case $compiler in
+							clang) packages="${packages} clang lld" ;;
+						esac
+					;;
+					macos)
+						packages="${packages} \
+							ninja \
+						"
+						case $compiler in
+							clang) packages="${packages} lld" ;;
+						esac
+					;;
 				esac
 				;;
 			*)	# Targets
@@ -62,7 +88,16 @@ function install_packages()
 		esac
 	done
 
-	sudo apt-get install -y --no-install-recommends $packages
+	case $system in
+		linux)
+			sudo apt-get update
+			sudo apt-get install -y --no-install-recommends $packages
+		;;
+		macos)
+			brew update
+			brew install --quiet $packages
+		;;
+	esac
 }
 
 
@@ -98,7 +133,7 @@ function build_llvm()
 		-DLLVM_ENABLE_RTTI=ON \
 		-DLLVM_ENABLE_ZLIB=ON
 	ninja install/strip
-	sudo chown -R root:root clang-cross
+	sudo chown -R root:0 clang-cross
 	echo -e "\nCreating \"clang-cross.tar.xz\" ...\n"
 	tar -cJvf "../clang-cross.tar.xz" clang-cross
 	popd
@@ -176,7 +211,7 @@ function build_target()
 	# Tarballs
 	sudo rm -rf ${TARGET}
 	mv clang-cross ${TARGET}
-	sudo chown -R root:root ${TARGET}
+	sudo chown -R root:0 ${TARGET}
 
 	local host_name="$(get_build_machine_type)"
 
@@ -206,7 +241,10 @@ fi
 install_packages "$TARGET" "$COMPILER"
 
 if [ ! -f "clang-cross.tar.xz" ]; then
-	build_llvm "$COMPILER"
+	url="${GH_URL_CLANG}/clang-cross/releases/download/${GH_VER_CLANG}/clang-cross.tar.xz"
+	if ! wget -nv -nc -T 120 --tries=20 "$url" 2>/dev/null; then
+		build_llvm "$COMPILER"
+	fi
 fi
 
 if [ "$TARGET" != "llvm" ]; then
