@@ -125,7 +125,7 @@ function build_llvm()
 		-DLLVM_ENABLE_RTTI=ON \
 		-DLLVM_ENABLE_ZLIB=ON
 	ninja install/strip
-	#sudo chown -R root:root clang-cross
+	sudo chown -R root:0 clang-cross
 	echo -e "\nCreating \"clang-cross.tar.xz\" ...\n"
 	tar -cJvf "../clang-cross.tar.xz" clang-cross
 	popd
@@ -203,7 +203,7 @@ function build_target()
 	# Tarballs
 	sudo rm -rf ${TARGET}
 	mv clang-cross ${TARGET}
-	#sudo chown -R root:root ${TARGET}
+	sudo chown -R root:0 ${TARGET}
 
 	local host_name="$(get_build_machine_type)"
 
@@ -216,28 +216,6 @@ function build_target()
 	sudo rm -rf build
 }
 
-set +e
-echo "sudo tests:"
-sudo id -u
-sudo id -g
-sudo whoami
-echo "sudo groups"
-sudo groups
-mkdir test
-mkdir test2
-echo "sudo chown -R root:0 test"
-sudo chown -R root:0 test
-ls -ld test
-echo "sudo chown -R root test2"
-sudo chown -R root test2
-ls -ld test2
-echo "sudo chown -R root:root test"
-sudo chown -R root:root test
-echo "sudo chown -R 0:0 test"
-sudo chown -R 0:0 test
-echo "sudo chown -R root test"
-sudo chown -R root test
-set -e
 
 TARGET=$1
 COMPILER=$2
