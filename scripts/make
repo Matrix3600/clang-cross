@@ -216,10 +216,21 @@ function build_target()
 	sudo rm -rf build
 }
 
+set +e
 echo "sudo tests:"
 sudo id -u
 sudo id -g
 sudo whoami
+echo "sudo groups"
+sudo groups
+mkdir test
+echo "sudo chown -R root:root test"
+sudo chown -R root:root test
+echo "sudo chown -R 0:0 test"
+sudo chown -R 0:0 test
+echo "sudo chown -R root test"
+sudo chown -R root test
+set -e
 
 TARGET=$1
 COMPILER=$2
