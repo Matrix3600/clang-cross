@@ -236,7 +236,7 @@ fi
 
 install_packages "$TARGET" "$COMPILER"
 
-if [ ! -f "clang-cross.tar.xz" ]]; then
+if [ ! -f "clang-cross.tar.xz" ]; then
 	url="${GH_URL_CLANG}/clang-cross/releases/download/${GH_VER_CLANG}/clang-cross.tar.xz"
 	if ! wget -nv -nc -T 120 --tries=20 "$url" 2>/dev/null; then
 		build_llvm "$COMPILER"
