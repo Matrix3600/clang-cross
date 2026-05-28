@@ -227,10 +227,10 @@ mkdir test
 mkdir test2
 echo "sudo chown -R root:0 test"
 sudo chown -R root:0 test
-ls -l test
+ls -ld test
 echo "sudo chown -R root test2"
 sudo chown -R root test2
-ls -l test2
+ls -ld test2
 echo "sudo chown -R root:root test"
 sudo chown -R root:root test
 echo "sudo chown -R 0:0 test"
