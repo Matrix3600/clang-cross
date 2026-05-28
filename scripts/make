@@ -4,16 +4,18 @@ set -e -o pipefail
 
 GH_URL_GNU="https://github.com/cross-tools"
 GH_URL_MUSL="https://github.com/Matrix3600"
+GH_URL_CLANG="https://github.com/Matrix3600"
 GH_VER_GNU=20260515
 GH_VER_MUSL=20260525
+GH_VER_CLANG=test-20260528-pre
 
 LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 
 
 function get_build_machine_type()
 {
-	echo "uname -s: \"$(uname -s)\""
-	echo "uname -m: \"$(uname -m)\""
+	echo "uname -s: \"$(uname -s)\"" >&2
+	echo "uname -m: \"$(uname -m)\"" >&2
 	if [ "$OS" == "Windows_NT" ]; then
 		local system="win"
 	else
@@ -41,10 +43,16 @@ function install_packages()
 	if [ -z "$modules" ]; then
 		modules="llvm targets"
 	fi
-	get_build_machine_type
-	brew update
-	local packages="wget xz"
+	local system="$(get_build_machine_type)"
+	system=${system%%-*}
 
+	local packages="wget"
+	case $system in
+		linux)
+			packages="${packages} xz-utils" ;;
+		macos)
+			packages="${packages} xz" ;;
+	esac
 	for module in $modules; do
 		case $module in
 			llvm)
@@ -54,8 +62,17 @@ function install_packages()
 					ninja \
 					python3 \
 				"
-				case $compiler in
-					clang) packages="${packages} lld" ;;
+				case $system in
+					linux)
+						case $compiler in
+							clang) packages="${packages} clang lld" ;;
+						esac
+					;;
+					macos)
+						case $compiler in
+							clang) packages="${packages} lld" ;;
+						esac
+					;;
 				esac
 				;;
 			*)	# Targets
@@ -63,7 +80,16 @@ function install_packages()
 		esac
 	done
 
-	brew install $packages
+	case $system in
+		linux)
+			sudo apt-get update
+			sudo apt-get install -y --no-install-recommends $packages
+		;;
+		macos)
+			brew update
+			brew install $packages
+		;;
+	esac
 }
 
 
@@ -190,6 +216,10 @@ function build_target()
 	sudo rm -rf build
 }
 
+echo "sudo tests:"
+sudo id -u
+sudo id -g
+sudo whoami
 
 TARGET=$1
 COMPILER=$2
@@ -206,8 +236,11 @@ fi
 
 install_packages "$TARGET" "$COMPILER"
 
-if [ ! -f "clang-cross.tar.xz" ]; then
-	build_llvm "$COMPILER"
+if [ ! -f "clang-cross.tar.xz" ]]; then
+	url="${GH_URL_CLANG}/clang-cross/releases/download/${GH_VER_CLANG}/clang-cross.tar.xz"
+	if ! wget -nv -nc -T 120 --tries=20 "$url" 2>/dev/null; then
+		build_llvm "$COMPILER"
+	fi
 fi
 
 if [ "$TARGET" != "llvm" ]; then
