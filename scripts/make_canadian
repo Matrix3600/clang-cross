@@ -6,8 +6,8 @@ GH_URL_GNU="https://github.com/cross-tools"
 GH_URL_MUSL="https://github.com/Matrix3600"
 GH_URL_CLANG="https://github.com/Matrix3600"
 GH_VER_GNU=20260515
-GH_VER_MUSL=20260525
-GH_VER_CLANG=xxx64-20260526-pre
+GH_VER_MUSL=20260528
+GH_VER_CLANG=20260528-pre
 
 GH_URL_LLVM_MINGW="https://github.com/mstorsjo"
 GH_VER_LLVM_MINGW=20260519
@@ -316,7 +316,7 @@ function build_target()
 				url="${GH_URL_GNU}/gnu-cross/releases/download/${GH_VER_GNU}/${TARGET}.tar.xz"
 				;;
 			*-musl*)
-				url="${GH_URL_MUSL}/musl-cross/releases/download/${GH_VER_MUSL}/${name}"
+				url="${GH_URL_MUSL}/musl-cross/releases/download/x64-${GH_VER_MUSL}/${name}"
 				;;
 			*)
 				echo "Target not supported (${TARGET})."
