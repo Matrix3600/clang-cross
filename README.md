@@ -3,13 +3,14 @@
 This is a simple and lightweight project for making a cross-compilation
 toolchain with the Clang compiler, and the GNU or Musl C library.
 
-These ready-to-use toolchains run on:
+These [ready-to-use](https://github.com/Matrix3600/clang-cross/releases) toolchains run on:
 
 - Linux x86-64
 - Linux ARM64
 - Windows x86-64
 - Windows ARM64
-- macOS x64, macOS ARM64, RISC-V,... (depending on demand)
+- macOS ARM64 (Apple Silicon)
+- macOS x64, Linux RISC-V,... (depending on demand)
 
 ## Supported targets
 
