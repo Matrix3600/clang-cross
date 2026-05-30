@@ -1,21 +1,21 @@
-name: Release Windows ARM64
+name: Release Windows x64, built on Linux ARM64
 
 on:
   workflow_dispatch:
   push:
-    tags: ['win-arm64-*']
+    tags: ['win-x64-*']
 
 permissions:
   contents: read
 
 env:
-  TOOLCHAIN_HOST: aarch64-w64-mingw32
-  TOOLCHAIN_HOST_NAME: win-arm64
+  TOOLCHAIN_HOST: x86_64-w64-mingw32
+  TOOLCHAIN_HOST_NAME: win-x64
 
 jobs:
   build-llvm:
     name: Build LLVM
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -36,7 +36,7 @@ jobs:
 
   build-targets:
     name: Build targets
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
     needs: [build-llvm]
     strategy:
       fail-fast: true
@@ -110,7 +110,7 @@ jobs:
 
   release:
     name: Release
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: write
     needs: [build-targets]
