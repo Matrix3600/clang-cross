@@ -23,7 +23,6 @@ jobs:
           submodules: true
       - name: Build
         run: |
-          sudo rm -rf /opt/clang-cross
           ./scripts/make llvm clang
       - name: Upload package
         uses: actions/upload-artifact@v7
@@ -97,7 +96,6 @@ jobs:
           name: "clang-cross"
       - name: Build
         run: |
-          sudo rm -rf /opt/clang-cross
           ./scripts/make "${{ matrix.target }}"
       - name: Upload package
         uses: actions/upload-artifact@v7
