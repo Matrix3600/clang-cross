@@ -27,8 +27,8 @@ jobs:
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
-          name: "clang-cross"
-          path: "clang-cross.tar.xz"
+          name: "clang-cross-${{ env.TOOLCHAIN_HOST_NAME }}"
+          path: "clang-cross-*.tar.xz"
           if-no-files-found: error
           retention-days: 1
 
@@ -93,7 +93,7 @@ jobs:
       - name: Download clang-cross
         uses: actions/download-artifact@v8
         with:
-          name: "clang-cross"
+          name: "clang-cross-${{ env.TOOLCHAIN_HOST_NAME }}"
       - name: Build
         run: |
           ./scripts/make "${{ matrix.target }}"

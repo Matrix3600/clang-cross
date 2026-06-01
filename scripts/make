@@ -134,8 +134,11 @@ function build_llvm()
 		-DLLVM_ENABLE_ZLIB=ON
 	ninja install/strip
 	sudo chown -R root:0 clang-cross
-	echo -e "\nCreating \"clang-cross.tar.xz\" ...\n"
-	tar -cJvf "../clang-cross.tar.xz" clang-cross
+
+	local host_name="$(get_build_machine_type)"
+	local name="clang-cross-${host_name}.tar.xz"
+	echo -e "\nCreating \"${name}\" ...\n"
+	tar -cJvf "../${name}" clang-cross
 	popd
 	sudo rm -rf build-llvm
 }
@@ -150,7 +153,8 @@ function build_target()
 	mkdir build
 	pushd build
 
-	tar -xf "../clang-cross.tar.xz"
+	local host_name="$(get_build_machine_type)"
+	tar -xf "../clang-cross-${host_name}.tar.xz"
 	sudo chown -R $(id -u):$(id -g) clang-cross
 	sudo rm -rf ${TARGET}
 	if [ -f "../${TARGET}.tar.xz" ]; then
@@ -213,8 +217,6 @@ function build_target()
 	mv clang-cross ${TARGET}
 	sudo chown -R root:0 ${TARGET}
 
-	local host_name="$(get_build_machine_type)"
-
 	local name="clang-${host_name}_${TARGET}.tar.xz"
 	echo -e "\nCreating \"${name}\" ...\n"
 	tar -cJvf "../${name}" "${TARGET}"
@@ -240,8 +242,11 @@ fi
 
 install_packages "$TARGET" "$COMPILER"
 
-if [ ! -f "clang-cross.tar.xz" ]; then
-	url="${GH_URL_CLANG}/clang-cross/releases/download/${GH_VER_CLANG}/clang-cross.tar.xz"
+host_name="$(get_build_machine_type)"
+llvm_tarname="clang-cross-${host_name}.tar.xz"
+
+if [ ! -f "$llvm_tarname" ]; then
+	url="${GH_URL_CLANG}/clang-cross/releases/download/${GH_VER_CLANG}/${llvm_tarname}"
 	if ! wget -nv -nc -T 120 --tries=20 "$url" 2>/dev/null; then
 		build_llvm "$COMPILER"
 	fi

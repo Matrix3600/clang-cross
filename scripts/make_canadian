@@ -327,8 +327,10 @@ function build_llvm()
 	ninja install/strip
 
 	sudo chown -R root:0 clang-cross
-	echo -e "\nCreating \"clang-cross-${HOST}.tar.xz\" ...\n"
-	tar -cJvf "../clang-cross-${HOST}.tar.xz" clang-cross
+
+	local name="clang-cross-${HOST}.tar.xz"
+	echo -e "\nCreating \"${name}\" ...\n"
+	tar -cJvf "../${name}" clang-cross
 	popd
 	sudo rm -rf build-llvm
 }
@@ -464,13 +466,15 @@ fi
 
 install_packages "$TARGET" "$HOST"
 
+llvm_tarname="clang-cross-${HOST}.tar.xz"
+
 if is_linux_host "$HOST" && [[ ! -f "sysroot-${HOST}.tar.xz" && \
-		! -f "clang-cross-${HOST}.tar.xz" ]]; then
+		! -f "$llvm_tarname" ]]; then
 	build_sysroot "$HOST"
 fi
 
-if [[ $TARGET != "sysroot" && ! -f "clang-cross-${HOST}.tar.xz" ]]; then
-	url="${GH_URL_CLANG}/clang-cross/releases/download/${GH_VER_CLANG}/clang-cross-${HOST}.tar.xz"
+if [[ $TARGET != "sysroot" && ! -f "$llvm_tarname" ]]; then
+	url="${GH_URL_CLANG}/clang-cross/releases/download/${GH_VER_CLANG}/${llvm_tarname}"
 	if ! wget -nv -nc -T 120 --tries=20 "$url" 2>/dev/null; then
 		build_llvm "$HOST"
 	fi
