@@ -8,7 +8,7 @@ GH_URL_GNU="https://github.com/cross-tools"
 GH_URL_MUSL="https://github.com/Matrix3600"
 GH_URL_CLANG="https://github.com/Matrix3600"
 GH_VER_GNU=20260515
-GH_VER_MUSL=20260528
+GH_VER_MUSL=20260603
 GH_VER_CLANG=20260528-pre
 
 GH_URL_LLVM_MINGW="https://github.com/mstorsjo"
