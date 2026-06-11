@@ -119,7 +119,7 @@ function build_llvm()
 			" ;;
 	esac
 	if [[ -n $default_target && $default_target != "llvm" ]]; then
-		options="${options} -DLLVM_DEFAULT_TARGET_TRIPLE=\"${default_target}\""
+		options="${options} -DLLVM_DEFAULT_TARGET_TRIPLE=${default_target}"
 	fi
 
 	cmake -G Ninja -S ../llvm/llvm $options \
