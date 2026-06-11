@@ -10,7 +10,7 @@ permissions:
 
 env:
   TOOLCHAIN_HOST_NAME: linux-x64
-  DEFAULT_TARGET: mipsel-unknown-linux-musl
+  DEFAULT_TARGET: mips-unknown-linux-musl
 
 jobs:
   build-llvm:
@@ -41,6 +41,7 @@ jobs:
       fail-fast: true
       matrix:
         target:
+          - mips-unknown-linux-musl
           - mipsel-unknown-linux-musl
     steps:
       - name: Checkout

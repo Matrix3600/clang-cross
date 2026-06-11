@@ -191,25 +191,20 @@ function build_target()
 	for n in clang:clang clang++:clang++ cpp:clang-cpp; do
 		cat > clang-cross/bin/${TARGET}-${n%%:*} <<-EOF
 			#!/bin/sh
-
-			TARGET=${TARGET}
-			BINDIR=\$(dirname "\$0")
-
-			exec "\${BINDIR}/${n##*:}" --target=\${TARGET} --sysroot=\${BINDIR}/../\${TARGET}/sysroot ${CLANG_ARGS} "\$@"
+			exec "\$(dirname "\$0")/${n##*:}" --target=${TARGET} "\$@"
 		EOF
 		chmod +x clang-cross/bin/${TARGET}-${n%%:*}
+		cat > clang-cross/bin/${TARGET}-${n##*:}.cfg <<-EOF
+			--target=${TARGET}
+			--sysroot=<CFGDIR>/../${TARGET}/sysroot
+			${CLANG_ARGS}
+		EOF
 		if [ "$TARGET" != "$default_target" ]; then
 			cat > clang-cross/bin/${n##*:}.cfg <<-EOF
-				--target=${TARGET}
-				--sysroot=<CFGDIR>/../${TARGET}/sysroot
-				${CLANG_ARGS}
+				@${TARGET}-${n##*:}.cfg
 			EOF
 		fi
 	done
-	cat > clang-cross/bin/${TARGET}.cfg <<-EOF
-		--sysroot=<CFGDIR>/../${TARGET}/sysroot
-		${CLANG_ARGS}
-	EOF
 	ln -sf ${TARGET}-clang clang-cross/bin/${TARGET}-cc
 	ln -sf ${TARGET}-clang++ clang-cross/bin/${TARGET}-c++
 	for n in ar:ar c++filt:cxxfilt nm:nm objcopy:objcopy objdump:objdump ranlib:ranlib size:size strings:strings strip:strip; do
