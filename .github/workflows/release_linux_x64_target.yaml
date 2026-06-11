@@ -3,7 +3,7 @@ name: Release Linux x64
 on:
   workflow_dispatch:
   push:
-    tags: ['x64-*']
+    tags: ['test-x64-*']
 
 permissions:
   contents: read
