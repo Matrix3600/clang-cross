@@ -10,7 +10,7 @@ permissions:
 
 env:
   TOOLCHAIN_HOST_NAME: linux-x64
-  DEFAULT_TARGET: mips-unknown-linux-musl
+  DEFAULT_TARGET: ""
 
 jobs:
   build-llvm:
