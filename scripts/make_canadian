@@ -153,7 +153,7 @@ function install_packages()
 function build_sysroot()
 {
 	local HOST="$1"
-	local HOST_NAME=$(sed 's/-unknown//g' <<< "$HOST")
+	local HOST_NAME="$(sed 's/-unknown//g' <<< "$HOST")"
 	local arch_name
 	local suite
 
@@ -202,7 +202,7 @@ function build_llvm()
 {
 	local HOST="$1"
 	local DEFAULT_TARGET="$2"
-	local HOST_NAME=$(sed 's/-unknown//g' <<< "$HOST")
+	local HOST_NAME="$(sed 's/-unknown//g' <<< "$HOST")"
 
 	local SYSROOT_NAME=""
 	local CC_FLAGS=""

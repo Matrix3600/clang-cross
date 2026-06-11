@@ -7,7 +7,7 @@ GH_URL_MUSL="https://github.com/Matrix3600"
 GH_URL_CLANG="https://github.com/Matrix3600"
 GH_VER_GNU=20260515
 GH_VER_MUSL=20260603
-GH_VER_CLANG=20260528-pre
+GH_VER_CLANG=20260611-pre
 
 LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 
