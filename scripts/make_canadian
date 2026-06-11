@@ -201,6 +201,7 @@ function set_cmake_var()
 function build_llvm()
 {
 	local HOST="$1"
+	local default_target="$2"
 	local HOST_NAME=$(sed 's/-unknown//g' <<< "$HOST")
 
 	local SYSROOT_NAME=""
@@ -308,7 +309,12 @@ function build_llvm()
 	echo -e "\n*** CMAKE toolchain file ***\n"
 	cat toolchain.cmake
 
-	cmake -G Ninja -S ../llvm/llvm \
+	local options=""
+	if [[ -n $default_target && $default_target != "llvm" ]]; then
+		options="${options} -DLLVM_DEFAULT_TARGET_TRIPLE=\"${default_target}\""
+	fi
+
+	cmake -G Ninja -S ../llvm/llvm $options \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_TOOLCHAIN_FILE="$(pwd)/toolchain.cmake" \
 		-DCMAKE_INSTALL_PREFIX="$(pwd)/clang-cross" \
@@ -391,6 +397,10 @@ function build_target()
 			${CLANG_ARGS}
 		EOF
 	done
+	cat > clang-cross/bin/${TARGET}.cfg <<-EOF
+		--sysroot=<CFGDIR>/../${TARGET}/sysroot
+		${CLANG_ARGS}
+	EOF
 	ln -sf ${TARGET}-clang clang-cross/bin/${TARGET}-cc
 	ln -sf ${TARGET}-clang++ clang-cross/bin/${TARGET}-c++
 	for n in ar:ar c++filt:cxxfilt nm:nm objcopy:objcopy objdump:objdump ranlib:ranlib size:size strings:strings strip:strip; do
@@ -476,7 +486,7 @@ fi
 if [[ $TARGET != "sysroot" && ! -f "$llvm_tarname" ]]; then
 	url="${GH_URL_CLANG}/clang-cross/releases/download/${GH_VER_CLANG}/${llvm_tarname}"
 	if ! wget -nv -nc -T 120 --tries=20 "$url" 2>/dev/null; then
-		build_llvm "$HOST"
+		build_llvm "$HOST" "$TARGET"
 	fi
 fi
 
