@@ -118,7 +118,7 @@ function build_llvm()
 				-DCMAKE_LINKER_TYPE=LLD \
 			" ;;
 	esac
-	if [[ -n $default_target && $default_target != "llvm" ]]; then
+	if [ -n "$default_target" ]; then
 		options="${options} -DLLVM_DEFAULT_TARGET_TRIPLE=${default_target}"
 	fi
 
@@ -237,6 +237,7 @@ function build_target()
 
 TARGET=$1
 COMPILER=$2
+DEFAULT_TARGET=$3
 
 if [ -z "$TARGET" ]; then
 	echo "[ERROR] Target is missing."
@@ -248,6 +249,10 @@ if [[ $TARGET != "llvm" && ! -f "targets/${TARGET}/config" ]]; then
 	exit 1
 fi
 
+if [[ -z $DEFAULT_TARGET && $TARGET != "llvm" ]]; then
+	DEFAULT_TARGET=$TARGET
+fi
+
 install_packages "$TARGET" "$COMPILER"
 
 host_name="$(get_build_machine_type)"
@@ -256,7 +261,7 @@ llvm_tarname="clang-cross-${host_name}.tar.xz"
 if [ ! -f "$llvm_tarname" ]; then
 	url="${GH_URL_CLANG}/clang-cross/releases/download/${GH_VER_CLANG}/${llvm_tarname}"
 	if ! wget -nv -nc -T 120 --tries=20 "$url" 2>/dev/null; then
-		build_llvm "$COMPILER" "$TARGET"
+		build_llvm "$COMPILER" "$DEFAULT_TARGET"
 	fi
 fi
 

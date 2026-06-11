@@ -23,7 +23,7 @@ jobs:
           submodules: true
       - name: Build
         run: |
-          ./scripts/make mipsel-unknown-linux-musl clang
+          ./scripts/make llvm clang mipsel-unknown-linux-musl
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
