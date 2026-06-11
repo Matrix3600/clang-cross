@@ -346,6 +346,8 @@ function build_target()
 {
 	local HOST="$1"
 	local TARGET="$2"
+	local default_target="$3"
+
 	local CLANG_ARGS=""
 	. targets/${TARGET}/config
 
@@ -391,11 +393,13 @@ function build_target()
 			exec "\${BINDIR}/${n##*:}" --target=\${TARGET} --sysroot=\${BINDIR}/../\${TARGET}/sysroot ${CLANG_ARGS} "\$@"
 		EOF
 		chmod +x clang-cross/bin/${TARGET}-${n%%:*}
-		cat > clang-cross/bin/${n##*:}.cfg <<-EOF
-			--target=${TARGET}
-			--sysroot=<CFGDIR>/../${TARGET}/sysroot
-			${CLANG_ARGS}
-		EOF
+		if [ "$TARGET" != "$default_target" ]; then
+			cat > clang-cross/bin/${n##*:}.cfg <<-EOF
+				--target=${TARGET}
+				--sysroot=<CFGDIR>/../${TARGET}/sysroot
+				${CLANG_ARGS}
+			EOF
+		fi
 	done
 	cat > clang-cross/bin/${TARGET}.cfg <<-EOF
 		--sysroot=<CFGDIR>/../${TARGET}/sysroot
@@ -496,7 +500,7 @@ if [[ $TARGET != "sysroot" && ! -f "$llvm_tarname" ]]; then
 fi
 
 if [[ $TARGET != "sysroot" && $TARGET != "llvm" ]]; then
-	build_target "$HOST" "$TARGET"
+	build_target "$HOST" "$TARGET" "$DEFAULT_TARGET"
 fi
 
 echo -e "\nDone.\n"

@@ -10,6 +10,7 @@ permissions:
 
 env:
   TOOLCHAIN_HOST_NAME: linux-x64
+  DEFAULT_TARGET: mipsel-unknown-linux-musl
 
 jobs:
   build-llvm:
@@ -23,7 +24,7 @@ jobs:
           submodules: true
       - name: Build
         run: |
-          ./scripts/make llvm clang mipsel-unknown-linux-musl
+          ./scripts/make llvm clang "${{ env.DEFAULT_TARGET }}"
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
@@ -52,7 +53,7 @@ jobs:
           name: "clang-cross-${{ env.TOOLCHAIN_HOST_NAME }}"
       - name: Build
         run: |
-          ./scripts/make "${{ matrix.target }}"
+          ./scripts/make "${{ matrix.target }}" "${{ env.DEFAULT_TARGET }}"
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
