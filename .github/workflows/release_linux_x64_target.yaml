@@ -1,9 +1,9 @@
-name: Release Linux x64 target
+name: Release Linux x64
 
 on:
   workflow_dispatch:
   push:
-    tags: ['test-x64-*']
+    tags: ['x64-*']
 
 permissions:
   contents: read
@@ -12,9 +12,30 @@ env:
   TOOLCHAIN_HOST_NAME: linux-x64
 
 jobs:
+  build-llvm:
+    name: Build LLVM
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          submodules: true
+      - name: Build
+        run: |
+          ./scripts/make mipsel-unknown-linux-musl clang
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: "clang-cross-${{ env.TOOLCHAIN_HOST_NAME }}"
+          path: "clang-cross-*.tar.xz"
+          if-no-files-found: error
+          retention-days: 1
+
   build-targets:
     name: Build targets
     runs-on: ubuntu-24.04
+    needs: [build-llvm]
     strategy:
       fail-fast: true
       matrix:
