@@ -107,14 +107,14 @@ function is_linux_host()
 
 function install_packages()
 {
-	local modules="$1"
-	local host="$2"
-	if [ -z "$modules" ]; then
-		modules="sysroot llvm targets"
+	local MODULES="$1"
+	local HOST="$2"
+	if [ -z "$MODULES" ]; then
+		MODULES="sysroot llvm targets"
 	fi
 	local packages="wget xz-utils"
 
-	for module in $modules; do
+	for module in $MODULES; do
 		case $module in
 			llvm)
 				packages="${packages} \
@@ -136,7 +136,7 @@ function install_packages()
 				"
 				;;
 			*)	# Targets
-				if ! is_linux_host "$host"; then
+				if ! is_linux_host "$HOST"; then
 					packages="${packages} \
 						7zip \
 					"
@@ -201,7 +201,7 @@ function set_cmake_var()
 function build_llvm()
 {
 	local HOST="$1"
-	local default_target="$2"
+	local DEFAULT_TARGET="$2"
 	local HOST_NAME=$(sed 's/-unknown//g' <<< "$HOST")
 
 	local SYSROOT_NAME=""
@@ -310,8 +310,8 @@ function build_llvm()
 	cat toolchain.cmake
 
 	local options=""
-	if [ -n "$default_target" ]; then
-		options="${options} -DLLVM_DEFAULT_TARGET_TRIPLE=${default_target}"
+	if [ -n "$DEFAULT_TARGET" ]; then
+		options="${options} -DLLVM_DEFAULT_TARGET_TRIPLE=${DEFAULT_TARGET}"
 	fi
 
 	cmake -G Ninja -S ../llvm/llvm $options \
@@ -346,7 +346,7 @@ function build_target()
 {
 	local HOST="$1"
 	local TARGET="$2"
-	local default_target="$3"
+	local DEFAULT_TARGET="$3"
 
 	local CLANG_ARGS=""
 	. targets/${TARGET}/config
@@ -394,7 +394,7 @@ function build_target()
 			--sysroot=<CFGDIR>/../${TARGET}/sysroot
 			${CLANG_ARGS}
 		EOF
-		if [ "$TARGET" != "$default_target" ]; then
+		if [ "$TARGET" != "$DEFAULT_TARGET" ]; then
 			cat > clang-cross/bin/${n##*:}.cfg <<-EOF
 				@${TARGET}-${n##*:}.cfg
 			EOF

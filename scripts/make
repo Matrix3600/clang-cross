@@ -39,10 +39,10 @@ function get_build_machine_type()
 
 function install_packages()
 {
-	local modules="$1"
-	local compiler="$2"
-	if [ -z "$modules" ]; then
-		modules="llvm targets"
+	local MODULES="$1"
+	local COMPILER="$2"
+	if [ -z "$MODULES" ]; then
+		MODULES="llvm targets"
 	fi
 	local system="$(get_build_machine_type)"
 	system=${system%%-*}
@@ -54,7 +54,7 @@ function install_packages()
 		macos)
 			packages="${packages} xz" ;;
 	esac
-	for module in $modules; do
+	for module in $MODULES; do
 		case $module in
 			llvm)
 				packages="${packages} \
@@ -69,7 +69,7 @@ function install_packages()
 							libz-dev \
 							ninja-build \
 						"
-						case $compiler in
+						case $COMPILER in
 							clang) packages="${packages} clang lld" ;;
 						esac
 					;;
@@ -77,7 +77,7 @@ function install_packages()
 						packages="${packages} \
 							ninja \
 						"
-						case $compiler in
+						case $COMPILER in
 							clang) packages="${packages} lld" ;;
 						esac
 					;;
@@ -103,14 +103,14 @@ function install_packages()
 
 function build_llvm()
 {
-	local compiler="$1"
-	local default_target="$2"
+	local COMPILER="$1"
+	local DEFAULT_TARGET="$2"
 	sudo rm -rf build-llvm
 	mkdir build-llvm
 	pushd build-llvm
 
 	local options=""
-	case $compiler in
+	case $COMPILER in
 		clang)
 			options="\
 				-DCMAKE_C_COMPILER=clang \
@@ -118,8 +118,8 @@ function build_llvm()
 				-DCMAKE_LINKER_TYPE=LLD \
 			" ;;
 	esac
-	if [ -n "$default_target" ]; then
-		options="${options} -DLLVM_DEFAULT_TARGET_TRIPLE=${default_target}"
+	if [ -n "$DEFAULT_TARGET" ]; then
+		options="${options} -DLLVM_DEFAULT_TARGET_TRIPLE=${DEFAULT_TARGET}"
 	fi
 
 	cmake -G Ninja -S ../llvm/llvm $options \
@@ -151,7 +151,7 @@ function build_llvm()
 function build_target()
 {
 	local TARGET="$1"
-	local default_target="$2"
+	local DEFAULT_TARGET="$2"
 
 	. targets/${TARGET}/config
 
@@ -199,7 +199,7 @@ function build_target()
 			--sysroot=<CFGDIR>/../${TARGET}/sysroot
 			${CLANG_ARGS}
 		EOF
-		if [ "$TARGET" != "$default_target" ]; then
+		if [ "$TARGET" != "$DEFAULT_TARGET" ]; then
 			cat > clang-cross/bin/${n##*:}.cfg <<-EOF
 				@${TARGET}-${n##*:}.cfg
 			EOF
