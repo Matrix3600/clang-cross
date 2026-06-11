@@ -140,7 +140,11 @@ function build_llvm()
 	sudo chown -R root:0 clang-cross
 
 	local host_name="$(get_build_machine_type)"
-	local name="clang-cross-${host_name}.tar.xz"
+	if [ -n "$DEFAULT_TARGET" ]; then
+		local name="clang-cross-${host_name}_${DEFAULT_TARGET}.tar.xz"
+	else
+		local name="clang-cross-${host_name}.tar.xz"
+	fi
 	echo -e "\nCreating \"${name}\" ...\n"
 	tar -cJvf "../${name}" clang-cross
 	popd
@@ -160,7 +164,12 @@ function build_target()
 	pushd build
 
 	local host_name="$(get_build_machine_type)"
-	tar -xf "../clang-cross-${host_name}.tar.xz"
+	if [ -n "$DEFAULT_TARGET" ]; then
+		local name="../clang-cross-${host_name}_${DEFAULT_TARGET}.tar.xz"
+	else
+		local name="../clang-cross-${host_name}.tar.xz"
+	fi
+	tar -xf "$name"
 	sudo chown -R $(id -u):$(id -g) clang-cross
 	sudo rm -rf ${TARGET}
 	if [ -f "../${TARGET}.tar.xz" ]; then
@@ -248,14 +257,26 @@ if [[ $TARGET != "llvm" && ! -f "targets/${TARGET}/config" ]]; then
 	exit 1
 fi
 
-if [[ -z $DEFAULT_TARGET && $TARGET != "llvm" ]]; then
-	DEFAULT_TARGET=$TARGET
-fi
-
 install_packages "$TARGET" "$COMPILER"
 
 host_name="$(get_build_machine_type)"
-llvm_tarname="clang-cross-${host_name}.tar.xz"
+if [ -n "$DEFAULT_TARGET" ]; then
+	llvm_tarname="clang-cross-${host_name}_${DEFAULT_TARGET}.tar.xz"
+else
+	llvm_tarname="clang-cross-${host_name}.tar.xz"
+	if [ ! -f "$llvm_tarname" ]; then
+		for name in clang-cross-${host_name}_*.tar.xz; do
+			if [[ -f $name && $name =~ ^clang-cross-${host_name}_(.+)\.tar\.xz$ ]]; then
+				DEFAULT_TARGET=${BASH_REMATCH[1]}
+				llvm_tarname="clang-cross-${host_name}_${DEFAULT_TARGET}.tar.xz"
+				break
+			fi
+		done
+		if [[ -z $DEFAULT_TARGET && $TARGET != "llvm" ]]; then
+			DEFAULT_TARGET=$TARGET
+		fi
+	fi
+fi
 
 if [ ! -f "$llvm_tarname" ]; then
 	url="${GH_URL_CLANG}/clang-cross/releases/download/${GH_VER_CLANG}/${llvm_tarname}"
