@@ -1,0 +1,102 @@
+name: Release Windows x64, built on Linux ARM64
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['test-win-x64-*']
+
+permissions:
+  contents: read
+
+env:
+  TOOLCHAIN_HOST: x86_64-w64-mingw32
+  TOOLCHAIN_HOST_NAME: win-x64
+  DEFAULT_TARGET: "mips-unknown-linux-musl"
+
+jobs:
+  build-llvm:
+    name: Build LLVM
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          submodules: true
+      - name: Build
+        run: |
+          ./scripts/make_canadian "${{ env.TOOLCHAIN_HOST }}" llvm "${{ env.DEFAULT_TARGET }}"
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: "llvm-clang-${{ env.TOOLCHAIN_HOST }}"
+          path: "llvm-clang-*.tar.xz"
+          if-no-files-found: error
+          retention-days: 1
+
+  build-targets:
+    name: Build targets
+    runs-on: ubuntu-24.04-arm
+    needs: [build-llvm]
+    strategy:
+      fail-fast: true
+      matrix:
+        target:
+          - mips-unknown-linux-musl
+          - mipsel-unknown-linux-musl
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+      - name: Download clang-cross
+        uses: actions/download-artifact@v8
+        with:
+          name: "llvm-clang-${{ env.TOOLCHAIN_HOST }}"
+      - name: Build
+        run: |
+          ./scripts/make_canadian "${{ env.TOOLCHAIN_HOST }}" "${{ matrix.target }}" "${{ env.DEFAULT_TARGET }}"
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: clang-${{ env.TOOLCHAIN_HOST_NAME }}_${{ matrix.target }}
+          path: "clang-*_${{ matrix.target }}.7z*"
+          if-no-files-found: error
+          retention-days: 1
+
+  release:
+    name: Release
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: write
+    needs: [build-targets]
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+      - name: Download packages
+        uses: actions/download-artifact@v8
+        with:
+          path: release
+          pattern: "clang-${{ env.TOOLCHAIN_HOST_NAME }}_*-*-*"
+          merge-multiple: true
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag=${GITHUB_REF#refs/tags/}
+          if [ "$(gh release view "$tag" 2>&1)" == "release not found" ]; then
+            gh release create "$tag" \
+              --repo="$GITHUB_REPOSITORY" \
+              --title="$tag" \
+              --generate-notes --draft
+          fi
+          hashfile="@clang-${{ env.TOOLCHAIN_HOST_NAME }}-SHA256SUMS"
+          rm -f "$hashfile"
+          for name in release/*.7z; do
+            gh release upload "$tag" "$name"
+            cat "${name}.sha256" >> "$hashfile"
+          done
+          gh release upload "$tag" "$hashfile"
