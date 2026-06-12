@@ -335,14 +335,17 @@ function build_llvm()
 	sudo chown -R root:0 clang-cross
 
 	if [ -n "$DEFAULT_TARGET" ]; then
-		local name="clang-cross-${HOST}_${DEFAULT_TARGET}.tar.xz"
+		local name="llvm-clang-${HOST}_${DEFAULT_TARGET}.tar.xz"
 	else
-		local name="clang-cross-${HOST}.tar.xz"
+		local name="llvm-clang-${HOST}.tar.xz"
 	fi
 	echo -e "\nCreating \"${name}\" ...\n"
 	tar -cJvf "../${name}" clang-cross
 	popd
 	sudo rm -rf build-llvm
+
+	echo -e "\nThe compiler alone, without the C library, is in"
+	echo -e "${name} .\n"
 }
 
 
@@ -360,9 +363,9 @@ function build_target()
 	pushd build
 
 	if [ -n "$DEFAULT_TARGET" ]; then
-		local name="../clang-cross-${HOST}_${DEFAULT_TARGET}.tar.xz"
+		local name="../llvm-clang-${HOST}_${DEFAULT_TARGET}.tar.xz"
 	else
-		local name="../clang-cross-${HOST}.tar.xz"
+		local name="../llvm-clang-${HOST}.tar.xz"
 	fi
 	tar -xf "$name"
 	sudo chown -R $(id -u):$(id -g) clang-cross
@@ -460,6 +463,9 @@ function build_target()
 	printf '%s *%s\n' "$hash" "$name" > "../${name}.sha256"
 	popd
 	sudo rm -rf build
+
+	echo -e "\nThe complete toolchain is in"
+	echo -e "${name} .\n"
 }
 
 
@@ -486,14 +492,14 @@ fi
 install_packages "$TARGET" "$HOST"
 
 if [ -n "$DEFAULT_TARGET" ]; then
-	llvm_tarname="clang-cross-${HOST}_${DEFAULT_TARGET}.tar.xz"
+	llvm_tarname="llvm-clang-${HOST}_${DEFAULT_TARGET}.tar.xz"
 else
-	llvm_tarname="clang-cross-${HOST}.tar.xz"
+	llvm_tarname="llvm-clang-${HOST}.tar.xz"
 	if [ ! -f "$llvm_tarname" ]; then
-		for name in clang-cross-${HOST}_*.tar.xz; do
-			if [[ -f $name && $name =~ ^clang-cross-${HOST}_(.+)\.tar\.xz$ ]]; then
+		for name in llvm-clang-${HOST}_*.tar.xz; do
+			if [[ -f $name && $name =~ ^llvm-clang-${HOST}_(.+)\.tar\.xz$ ]]; then
 				DEFAULT_TARGET=${BASH_REMATCH[1]}
-				llvm_tarname="clang-cross-${HOST}_${DEFAULT_TARGET}.tar.xz"
+				llvm_tarname="llvm-clang-${HOST}_${DEFAULT_TARGET}.tar.xz"
 				break
 			fi
 		done
