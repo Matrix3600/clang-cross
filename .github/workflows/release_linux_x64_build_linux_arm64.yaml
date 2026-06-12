@@ -1,0 +1,166 @@
+name: Release Linux x64, built on Linux ARM64
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['test-linux-x64-*']
+
+permissions:
+  contents: read
+
+env:
+  TOOLCHAIN_HOST: x86_64-linux-gnu
+  TOOLCHAIN_HOST_NAME: linux-x64
+
+jobs:
+  build-sysroot:
+    name: Build sysroot
+    runs-on: ubuntu-26.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Build
+        run: |
+          ./scripts/make_canadian "${{ env.TOOLCHAIN_HOST }}" sysroot
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: sysroot-${{ env.TOOLCHAIN_HOST }}
+          path: "sysroot-*.tar.xz"
+          if-no-files-found: error
+          retention-days: 1
+
+  build-llvm:
+    name: Build LLVM
+    runs-on: ubuntu-26.04-arm
+    needs: [build-sysroot]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          submodules: true
+      - name: Download sysroot
+        uses: actions/download-artifact@v8
+        with:
+          name: "sysroot-${{ env.TOOLCHAIN_HOST }}"
+      - name: Build
+        run: |
+          ./scripts/make_canadian "${{ env.TOOLCHAIN_HOST }}" llvm
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: "llvm-clang-${{ env.TOOLCHAIN_HOST }}"
+          path: "llvm-clang-*.tar.xz"
+          if-no-files-found: error
+          retention-days: 1
+
+  build-targets:
+    name: Build targets
+    runs-on: ubuntu-26.04-arm
+    needs: [build-llvm]
+    strategy:
+      fail-fast: true
+      matrix:
+        target:
+          - aarch64-unknown-linux-gnu
+          - aarch64-unknown-linux-musl
+          - arm-unknown-linux-gnueabi
+          - arm-unknown-linux-gnueabihf
+          - arm-unknown-linux-musleabi
+          - arm-unknown-linux-musleabihf
+          - armv7-unknown-linux-gnueabi
+          - armv7-unknown-linux-gnueabihf
+          - armv7-unknown-linux-musleabi
+          - armv7-unknown-linux-musleabihf
+          - i586-unknown-linux-gnu
+          - i586-unknown-linux-musl
+          - i686-unknown-linux-gnu
+          - i686-unknown-linux-musl
+          - loongarch64-unknown-linux-gnu
+          - loongarch64-unknown-linux-musl
+          - mips-unknown-linux-gnu
+          - mips-unknown-linux-gnusf
+          - mips-unknown-linux-musl
+          - mips-unknown-linux-muslsf
+          - mipsel-unknown-linux-gnu
+          - mipsel-unknown-linux-gnusf
+          - mipsel-unknown-linux-musl
+          - mipsel-unknown-linux-muslsf
+          - mips64-unknown-linux-gnu
+          - mips64-unknown-linux-musl
+          - mips64el-unknown-linux-gnu
+          - mips64el-unknown-linux-musl
+          - powerpc-unknown-linux-gnu
+          - powerpc-unknown-linux-musl
+          - powerpcle-unknown-linux-gnu
+          - powerpcle-unknown-linux-musl
+          - powerpc64-unknown-linux-gnu
+          - powerpc64-unknown-linux-musl
+          - powerpc64le-unknown-linux-gnu
+          - powerpc64le-unknown-linux-musl
+          - riscv32-unknown-linux-gnu
+          - riscv32-unknown-linux-musl
+          - riscv64-unknown-linux-gnu
+          - riscv64-unknown-linux-musl
+          - s390x-ibm-linux-gnu
+          - s390x-ibm-linux-musl
+          - x86_64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          submodules: true
+      - name: Download clang-cross
+        uses: actions/download-artifact@v8
+        with:
+          name: "llvm-clang-${{ env.TOOLCHAIN_HOST }}"
+      - name: Build
+        run: |
+          ./scripts/make_canadian "${{ env.TOOLCHAIN_HOST }}" "${{ matrix.target }}"
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: clang-${{ env.TOOLCHAIN_HOST_NAME }}_${{ matrix.target }}
+          path: "clang-*_${{ matrix.target }}.tar.xz*"
+          if-no-files-found: error
+          retention-days: 1
+
+  release:
+    name: Release
+    runs-on: ubuntu-26.04-arm
+    permissions:
+      contents: write
+    needs: [build-targets]
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+      - name: Download packages
+        uses: actions/download-artifact@v8
+        with:
+          path: release
+          pattern: "clang-${{ env.TOOLCHAIN_HOST_NAME }}_*-*-*"
+          merge-multiple: true
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag=${GITHUB_REF#refs/tags/}
+          if [ "$(gh release view "$tag" 2>&1)" == "release not found" ]; then
+            gh release create "$tag" \
+              --repo="$GITHUB_REPOSITORY" \
+              --title="$tag" \
+              --generate-notes --draft
+          fi
+          hashfile="@clang-${{ env.TOOLCHAIN_HOST_NAME }}-SHA256SUMS"
+          rm -f "$hashfile"
+          for name in release/*.tar.xz; do
+            gh release upload "$tag" "$name"
+            cat "${name}.sha256" >> "$hashfile"
+          done
+          gh release upload "$tag" "$hashfile"
