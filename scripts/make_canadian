@@ -179,7 +179,7 @@ function install_packages()
 				packages="${packages} \
 					binfmt-support \
 					debootstrap \
-					qemu-user-binfmt-hwe \
+					qemu-user-binfmt \
 				"
 				;;
 			*)	# Targets
