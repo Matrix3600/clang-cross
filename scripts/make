@@ -109,6 +109,7 @@ function install_packages()
 		macos)
 			packages="${packages} \
 				lld \
+				llvm \
 				ninja \
 				xz \
 			"
@@ -122,6 +123,8 @@ function install_packages()
 		macos)
 			brew update
 			brew install --quiet $packages
+
+			export PATH="$(brew --prefix llvm)/bin:$PATH"
 		;;
 	esac
 }

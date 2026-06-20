@@ -89,6 +89,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 1
+          submodules: true
       - name: Download clang-cross
         uses: actions/download-artifact@v8
         with:
