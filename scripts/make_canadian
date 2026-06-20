@@ -12,7 +12,7 @@ GH_VER_MUSL=20260616
 GH_VER_CLANG=20260616-pre
 
 GH_URL_LLVM_MINGW="https://github.com/mstorsjo"
-GH_VER_LLVM_MINGW=20260602
+GH_VER_LLVM_MINGW=20260616
 GH_UBNT_VER_LLVM_MINGW=22.04
 
 LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
@@ -105,6 +105,53 @@ function is_linux_host()
 }
 
 
+function get_latest_exec_path
+{
+	local EXEC_NAME="$1"
+
+	# Search latest executable in PATH
+	local exec_path=""
+	local version=0
+	IFS=:
+	for p in $PATH; do
+		unset IFS
+		for name in ${p}/${EXEC_NAME}*; do
+			if [[ -f $name && $name =~ /${EXEC_NAME}(|-([0-9]+))$ ]]; then
+				echo "$name" >&2
+				local v=${BASH_REMATCH[2]}
+				if [ -z "$v" ]; then v=1; fi
+				if [[ $v -gt $version ]]; then
+					exec_path=$name
+					version=$v
+				fi
+			fi
+		done
+	done
+	unset IFS
+	if [ -n "$exec_path" ]; then
+		printf '%s\n' "$exec_path"
+		echo "Using $exec_path" >&2
+	else
+		echo "[ERROR] ${EXEC_NAME} not found." >&2
+		return 1
+	fi
+}
+
+
+function read_target_config
+{
+	local config_file="$1"
+	while IFS= read -r line <&3
+	do
+		if [ -n "$line" ]; then
+			if [[ $line =~ ^[[:space:]]*CLANG_ARGS=\"(.*)\"[[:space:]]*$ ]]; then
+				printf '%s\n' "${BASH_REMATCH[1]}"
+			fi
+		fi
+	done 3< "$config_file"
+}
+
+
 function install_packages()
 {
 	local MODULES="$1"
@@ -113,20 +160,20 @@ function install_packages()
 		MODULES="sysroot llvm targets"
 	fi
 	local packages="wget xz-utils"
-
+	local llvm_packages="\
+		build-essential \
+		ca-certificates \
+		clang \
+		cmake \
+		libz-dev \
+		lld \
+		ninja-build \
+		python3 \
+	"
 	for module in $MODULES; do
 		case $module in
 			llvm)
-				packages="${packages} \
-					build-essential \
-					ca-certificates \
-					clang \
-					cmake \
-					libz-dev \
-					lld \
-					ninja-build \
-					python3 \
-				"
+				packages="${packages} ${llvm_packages}"
 				;;
 			sysroot)
 				packages="${packages} \
@@ -136,6 +183,7 @@ function install_packages()
 				"
 				;;
 			*)	# Targets
+				packages="${packages} ${llvm_packages}"
 				if ! is_linux_host "$HOST"; then
 					packages="${packages} \
 						7zip \
@@ -228,29 +276,7 @@ function build_llvm()
 
 		set_cmake_var C_COMPILER clang
 		set_cmake_var CXX_COMPILER clang++
-
-		# Search latest llvm-strip in PATH
-		local llvm_strip=""
-		local version=0
-		IFS=:
-		for p in $PATH; do
-			unset IFS
-			for name in ${p}/llvm-strip*; do
-				if [[ -f $name && $name =~ /llvm-strip(|-([0-9]+))$ ]]; then
-					echo "$name"
-					local v=${BASH_REMATCH[2]}
-					if [ -z "$v" ]; then v=1; fi
-					if [[ $v -gt $version ]]; then
-						llvm_strip=$name
-						version=$v
-					fi
-				fi
-			done
-		done
-		unset IFS
-		if [ -n "$llvm_strip" ]; then
-			set_cmake_var STRIP "$llvm_strip"
-		fi
+		set_cmake_var STRIP "$(get_latest_exec_path llvm-strip)"
 	else
 		set_cmake_var SYSTEM_NAME Windows
 		SYSROOT_NAME="llvm-mingw"
@@ -349,14 +375,89 @@ function build_llvm()
 }
 
 
+function build_compiler_rt()
+{
+	local TARGET="$1"
+
+	local SYSROOT="$(pwd)/clang-cross/${TARGET}/sysroot"
+	local CLANG_LIB_DIR="$(pwd)/clang-cross/lib/clang"
+	local CLANG_ARGS="$(read_target_config "../targets/${TARGET}/config")"
+
+	sudo rm -rf build-compiler-rt
+	mkdir build-compiler-rt
+	pushd build-compiler-rt
+	local INSTALL_DIR="$(pwd)/install"
+
+	cat - <<-EOF >> toolchain.cmake
+		set(CMAKE_SYSTEM_NAME Linux)
+		set(CMAKE_SYSROOT ${SYSROOT})
+		set(CMAKE_C_COMPILER clang)
+		set(CMAKE_CXX_COMPILER clang++)
+		set(CMAKE_AR "$(get_latest_exec_path llvm-ar)")
+		set(CMAKE_RANLIB "$(get_latest_exec_path llvm-ranlib)")
+		set(CMAKE_C_COMPILER_TARGET ${TARGET})
+		set(CMAKE_CXX_COMPILER_TARGET ${TARGET})
+		set(CMAKE_ASM_COMPILER_TARGET ${TARGET})
+		set(CMAKE_C_FLAGS_INIT "${CLANG_ARGS}")
+		set(CMAKE_CXX_FLAGS_INIT "${CLANG_ARGS}")
+		set(CMAKE_ASM_FLAGS_INIT "${CLANG_ARGS}")
+		set(CMAKE_LINKER_TYPE LLD)
+		set(CMAKE_C_COMPILER_WORKS 1)
+		set(CMAKE_CXX_COMPILER_WORKS 1)
+		set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+		set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+		set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+		set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+	EOF
+
+	cmake -G Ninja \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_TOOLCHAIN_FILE="$(pwd)/toolchain.cmake" \
+		-DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
+		-DCOMPILER_RT_DEFAULT_TARGET_ONLY=ON \
+		-DCOMPILER_RT_USE_BUILTINS_LIBRARY=ON \
+		-DCOMPILER_RT_BUILD_CRT=ON \
+		-DCOMPILER_RT_EXCLUDE_ATOMIC_BUILTIN=OFF \
+		-DLLVM_CMAKE_DIR="" \
+		../../llvm/compiler-rt/lib/builtins
+	ninja install
+
+	cd "${INSTALL_DIR}/lib/linux"
+	local arch="${TARGET%%-*}"
+	for f in clang_rt.crtbegin-*.o; do
+		mv "$f" clang_rt.crtbegin.o
+	done
+	for f in clang_rt.crtend-*.o; do
+		mv "$f" clang_rt.crtend.o
+	done
+	for t in "" S T; do
+		ln -sf clang_rt.crtbegin.o "crtbegin${t}.o"
+		ln -sf clang_rt.crtend.o "crtend${t}.o"
+	done
+	for f in libclang_rt.builtins-*.a; do
+		mv "$f" libclang_rt.builtins.a
+	done
+
+	pushd "$CLANG_LIB_DIR" >/dev/null
+	for version in *; do
+		if [[ -d $version && $version =~ ^[1-9][0-9]*$ ]]; then
+			local dest_dir="${CLANG_LIB_DIR}/${version}/lib/${TARGET}"
+			mkdir -p "$dest_dir"
+			cp -a "${INSTALL_DIR}/lib/linux/." "${dest_dir}/"
+		fi
+	done
+	popd >/dev/null
+
+	popd
+	sudo rm -rf build-compiler-rt
+}
+
+
 function build_target()
 {
 	local HOST="$1"
 	local TARGET="$2"
 	local DEFAULT_TARGET="$3"
-
-	local CLANG_ARGS=""
-	. targets/${TARGET}/config
 
 	sudo rm -rf build
 	mkdir build
@@ -375,7 +476,7 @@ function build_target()
 	else
 		local name="linux-x64_${TARGET}.tar.xz"
 		local url=""
-		case ${TARGET} in
+		case $TARGET in
 			*-gnu*)
 				url="${GH_URL_GNU}/gnu-cross/releases/download/${GH_VER_GNU}/${TARGET}.tar.xz"
 				;;
@@ -395,6 +496,26 @@ function build_target()
 	cp -a ${TARGET}/${TARGET} clang-cross/
 	rm -rf clang-cross/lib/gcc/${TARGET}/*/{install-tools,plugin}
 	rm -rf clang-cross/${TARGET}/{bin,debug-root,lib}
+
+	local CLANG_ARGS="$(read_target_config "../targets/${TARGET}/config")"
+	echo "Target configuration: \"${CLANG_ARGS}\""
+
+	# Use Clang runtime (compiler-rt) instead of GCC runtime (libgcc_s)
+	# https://clang.llvm.org/docs/Toolchain.html#compiler-runtime
+	local use_compiler_rt
+	case $TARGET in
+		arm-*linux-musleabi|powerpcle-*linux-musl)
+			use_compiler_rt=false ;;  # Not supported
+		*-gnu*) use_compiler_rt=false ;;  # Incompatible with GNU libc
+		*) use_compiler_rt=true ;;
+	esac
+
+	if $use_compiler_rt; then
+		build_compiler_rt	"$TARGET"
+		CLANG_ARGS="--rtlib=compiler-rt
+${CLANG_ARGS}"
+	fi
+
 	for n in clang:clang clang++:clang++ cpp:clang-cpp; do
 		cat > clang-cross/bin/${TARGET}-${n%%:*} <<-EOF
 			#!/bin/sh
@@ -414,17 +535,14 @@ function build_target()
 	done
 	ln -sf ${TARGET}-clang clang-cross/bin/${TARGET}-cc
 	ln -sf ${TARGET}-clang++ clang-cross/bin/${TARGET}-c++
-	for n in ar:ar c++filt:cxxfilt nm:nm objcopy:objcopy objdump:objdump ranlib:ranlib size:size strings:strings strip:strip; do
+	for n in ar:ar c++filt:cxxfilt nm:nm objcopy:objcopy objdump:objdump \
+			ranlib:ranlib size:size strings:strings strip:strip; do
 		cat > clang-cross/bin/${TARGET}-${n%%:*} <<-EOF
 			#!/bin/sh
-
-			BINDIR=\$(dirname "\$0")
-
-			exec "\${BINDIR}/llvm-${n##*:}" "\$@"
+			exec "\$(dirname "\$0")/llvm-${n##*:}" "\$@"
 		EOF
 		chmod +x clang-cross/bin/${TARGET}-${n%%:*}
 	done
-
 	find clang-cross -exec chmod a-w {} \;
 
 	if ! is_linux_host "$HOST"; then

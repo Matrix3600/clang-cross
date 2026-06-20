@@ -23,7 +23,7 @@ jobs:
           submodules: true
       - name: Build
         run: |
-          ./scripts/make llvm clang
+          ./scripts/make llvm
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
