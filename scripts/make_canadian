@@ -9,7 +9,7 @@ GH_URL_MUSL="https://github.com/Matrix3600"
 GH_URL_CLANG="https://github.com/Matrix3600"
 GH_VER_GNU=20260515
 GH_VER_MUSL=20260616
-GH_VER_CLANG=20260616-pre
+GH_VER_CLANG=20260620-pre
 
 GH_URL_LLVM_MINGW="https://github.com/mstorsjo"
 GH_VER_LLVM_MINGW=20260616
@@ -390,7 +390,7 @@ function build_compiler_rt()
 
 	cat - <<-EOF >> toolchain.cmake
 		set(CMAKE_SYSTEM_NAME Linux)
-		set(CMAKE_SYSROOT ${SYSROOT})
+		set(CMAKE_SYSROOT "${SYSROOT}")
 		set(CMAKE_C_COMPILER clang)
 		set(CMAKE_CXX_COMPILER clang++)
 		set(CMAKE_AR "$(get_latest_exec_path llvm-ar)")
@@ -402,8 +402,8 @@ function build_compiler_rt()
 		set(CMAKE_CXX_FLAGS_INIT "${CLANG_ARGS}")
 		set(CMAKE_ASM_FLAGS_INIT "${CLANG_ARGS}")
 		set(CMAKE_LINKER_TYPE LLD)
-		set(CMAKE_C_COMPILER_WORKS 1)
-		set(CMAKE_CXX_COMPILER_WORKS 1)
+		set(CMAKE_C_COMPILER_WORKS TRUE)
+		set(CMAKE_CXX_COMPILER_WORKS TRUE)
 		set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 		set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 		set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
@@ -504,7 +504,7 @@ function build_target()
 	# https://clang.llvm.org/docs/Toolchain.html#compiler-runtime
 	local use_compiler_rt
 	case $TARGET in
-		arm-*linux-musleabi|powerpcle-*linux-musl)
+		arm-*linux-musleabi*|powerpcle-*linux-musl)
 			use_compiler_rt=false ;;  # Not supported
 		*-gnu*) use_compiler_rt=false ;;  # Incompatible with GNU libc
 		*) use_compiler_rt=true ;;

@@ -7,7 +7,7 @@ GH_URL_MUSL="https://github.com/Matrix3600"
 GH_URL_CLANG="https://github.com/Matrix3600"
 GH_VER_GNU=20260515
 GH_VER_MUSL=20260616
-GH_VER_CLANG=20260616-pre
+GH_VER_CLANG=20260620-pre
 
 LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 
@@ -33,39 +33,6 @@ function get_build_machine_type()
 	esac
 	if [ -n "$arch" ]; then printf '%s\n' "${system}-${arch}"
 	else printf '%s\n' "$system"
-	fi
-}
-
-
-function get_latest_exec_path
-{
-	local EXEC_NAME="$1"
-
-	# Search latest executable in PATH
-	local exec_path=""
-	local version=0
-	IFS=:
-	for p in $PATH; do
-		unset IFS
-		for name in ${p}/${EXEC_NAME}*; do
-			if [[ -f $name && $name =~ /${EXEC_NAME}(|-([0-9]+))$ ]]; then
-				echo "$name" >&2
-				local v=${BASH_REMATCH[2]}
-				if [ -z "$v" ]; then v=1; fi
-				if [[ $v -gt $version ]]; then
-					exec_path=$name
-					version=$v
-				fi
-			fi
-		done
-	done
-	unset IFS
-	if [ -n "$exec_path" ]; then
-		printf '%s\n' "$exec_path"
-		echo "Using $exec_path" >&2
-	else
-		echo "[ERROR] ${EXEC_NAME} not found." >&2
-		return 1
 	fi
 }
 
@@ -109,7 +76,6 @@ function install_packages()
 		macos)
 			packages="${packages} \
 				lld \
-				llvm \
 				ninja \
 				xz \
 			"
@@ -123,8 +89,6 @@ function install_packages()
 		macos)
 			brew update
 			brew install --quiet $packages
-
-			export PATH="$(brew --prefix llvm)/bin:$PATH"
 		;;
 	esac
 }
@@ -184,6 +148,7 @@ function build_compiler_rt()
 {
 	local TARGET="$1"
 
+	local LLVM_PATH="$(pwd)/clang-cross/bin"
 	local SYSROOT="$(pwd)/clang-cross/${TARGET}/sysroot"
 	local CLANG_LIB_DIR="$(pwd)/clang-cross/lib/clang"
 	local CLANG_ARGS="$(read_target_config "../targets/${TARGET}/config")"
@@ -195,11 +160,11 @@ function build_compiler_rt()
 
 	cat - <<-EOF >> toolchain.cmake
 		set(CMAKE_SYSTEM_NAME Linux)
-		set(CMAKE_SYSROOT ${SYSROOT})
-		set(CMAKE_C_COMPILER clang)
-		set(CMAKE_CXX_COMPILER clang++)
-		set(CMAKE_AR "$(get_latest_exec_path llvm-ar)")
-		set(CMAKE_RANLIB "$(get_latest_exec_path llvm-ranlib)")
+		set(CMAKE_SYSROOT "${SYSROOT}")
+		set(CMAKE_C_COMPILER "${LLVM_PATH}/clang")
+		set(CMAKE_CXX_COMPILER "${LLVM_PATH}/clang++")
+		set(CMAKE_AR "${LLVM_PATH}/llvm-ar")
+		set(CMAKE_RANLIB "${LLVM_PATH}/llvm-ranlib")
 		set(CMAKE_C_COMPILER_TARGET ${TARGET})
 		set(CMAKE_CXX_COMPILER_TARGET ${TARGET})
 		set(CMAKE_ASM_COMPILER_TARGET ${TARGET})
@@ -207,8 +172,8 @@ function build_compiler_rt()
 		set(CMAKE_CXX_FLAGS_INIT "${CLANG_ARGS}")
 		set(CMAKE_ASM_FLAGS_INIT "${CLANG_ARGS}")
 		set(CMAKE_LINKER_TYPE LLD)
-		set(CMAKE_C_COMPILER_WORKS 1)
-		set(CMAKE_CXX_COMPILER_WORKS 1)
+		set(CMAKE_C_COMPILER_WORKS TRUE)
+		set(CMAKE_CXX_COMPILER_WORKS TRUE)
 		set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 		set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 		set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
@@ -309,7 +274,7 @@ function build_target()
 	# https://clang.llvm.org/docs/Toolchain.html#compiler-runtime
 	local use_compiler_rt
 	case $TARGET in
-		arm-*linux-musleabi|powerpcle-*linux-musl)
+		arm-*linux-musleabi*|powerpcle-*linux-musl)
 			use_compiler_rt=false ;;  # Not supported
 		*-gnu*) use_compiler_rt=false ;;  # Incompatible with GNU libc
 		*) use_compiler_rt=true ;;
