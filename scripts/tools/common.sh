@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+
+CROSS_GNU_URL="https://github.com/cross-tools"
+CROSS_GNU_VER="20260515"
+CROSS_MUSL_URL="https://github.com/Matrix3600"
+CROSS_MUSL_VER="20260616"
+CROSS_CLANG_URL="https://github.com/Matrix3600"
+CROSS_CLANG_VER="20260627-pre"
+
+MUSL_URL="https://musl.libc.org/releases"
+MUSL_VER="1.2.6"
+MUSL_SHA256="d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"
+
+LLVM_URL="https://github.com/llvm"
+LLVM_VER="22.1.8"
+LLVM_X64_SHA256="df0e1ecf16caf3489a272a5eea4eec9b0d82878f6477fa309504f918a0006384"
+LLVM_ARM64_SHA256="805efad2bb91cb4967fa569e0881d10c0f69c04461cf671cccbae19f547acc34"
+
+LLVM_MINGW_URL="https://github.com/mstorsjo"
+LLVM_MINGW_VER="20260616"
+LLVM_MINGW_UBNT_VER="22.04"
+LLVM_MINGW_X64_SHA256="a1f7968b48ba8d949194d6dee6c76f3cd0f61cba91658599af2c2c834a55ab87"
+LLVM_MINGW_ARM64_SHA256="e7e5d135d93d3f2a3beaaea633a5b0e66ac75391a53feae654391913dd76102b"
+
+
+function check_sha256()
+{
+	local FILENAME="$1"
+	local SHA256="$2"
+	local chksum="$(sha256sum "$FILENAME")"
+	chksum="${chksum%%[[:space:]]*}"
+	
+	if [ "$chksum" != "$SHA256" ]; then
+		echo "[ERROR] Bad SHA256 for ${FILENAME}: ${chksum}, expected ${SHA256}." >&2
+		return 1
+	fi
+	# echo "[DEBUG] Correct SHA256 for ${FILENAME} (${chksum})."
+	return 0
+}
+
+
+function get_build_machine_type()
+{
+	if [ "$OS" == "Windows_NT" ]; then
+		local system="win"
+	else
+		local system="linux"
+		case $(uname -s) in
+			Linux) ;;
+			Darwin) system="macos" ;;
+			*) echo "uname -s: \"$(uname -s)\"" >&2 ;;
+		esac
+	fi
+	local arch="unknown"
+	case $(uname -m) in
+		i?86) arch="x86" ;;
+		x86_64|amd64) arch="x64" ;;
+		aarch64*|arm64|armv8*) arch="arm64" ;;
+		*) echo "uname -m: \"$(uname -m)\"" >&2 ;;
+	esac
+	printf '%s\n' "${system}-${arch}"
+}
+
+
+function get_latest_exec_path
+{
+	local EXEC_NAME="$1"
+
+	# Search latest executable in PATH
+	local exec_path=""
+	IFS=:
+	for p in $PATH; do
+		unset IFS
+		local version=0
+		for name in ${p}/${EXEC_NAME}*; do
+			if [[ -f $name && $name =~ /${EXEC_NAME}(|-([0-9]+))$ ]]; then
+				echo "$name" >&2
+				local v=${BASH_REMATCH[2]}
+				if [ -z "$v" ]; then v=1; fi
+				if [[ $v -gt $version ]]; then
+					exec_path=$name
+					version=$v
+				fi
+			fi
+		done
+		if [ -n "$exec_path" ]; then break; fi
+	done
+	unset IFS
+	if [ -n "$exec_path" ]; then
+		printf '%s\n' "$exec_path"
+		echo "Using $exec_path" >&2
+	else
+		echo "[ERROR] ${EXEC_NAME} not found." >&2
+		return 1
+	fi
+}
+
+
+function read_target_config
+{
+	local config_file="$1"
+	while IFS= read -r line <&3
+	do
+		if [ -n "$line" ]; then
+			if [[ $line =~ ^[[:space:]]*CLANG_ARGS=\"(.*)\"[[:space:]]*$ ]]; then
+				printf '%s\n' "${BASH_REMATCH[1]}"
+			fi
+		fi
+	done 3< "$config_file"
+}
+
+
+function show_progress_message()
+{
+	echo
+	echo "***"
+	echo "*** $1"
+	echo "***"
+	echo
+}

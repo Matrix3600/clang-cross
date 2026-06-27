@@ -1,44 +1,12 @@
 #!/usr/bin/env bash
 
-# This script only runs on Linux.
+# This script only runs on Linux x64 or ARM64.
 
 set -e -o pipefail
 
-GH_URL_GNU="https://github.com/cross-tools"
-GH_URL_MUSL="https://github.com/Matrix3600"
-GH_URL_CLANG="https://github.com/Matrix3600"
-GH_VER_GNU=20260515
-GH_VER_MUSL=20260616
-GH_VER_CLANG=20260620-pre
-
-GH_URL_LLVM_MINGW="https://github.com/mstorsjo"
-GH_VER_LLVM_MINGW=20260616
-GH_UBNT_VER_LLVM_MINGW=22.04
-
 LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 
-
-function get_build_machine_type()
-{
-	if [ "$OS" == "Windows_NT" ]; then
-		local system="win"
-	else
-		local system="linux"
-		case $(uname -s) in
-			Linux) ;;
-			Darwin) system="macos" ;;
-			*) echo "uname -s: \"$(uname -s)\"" >&2 ;;
-		esac
-	fi
-	local arch="unknown"
-	case $(uname -m) in
-		i?86) arch="x86" ;;
-		x86_64|amd64) arch="x64" ;;
-		aarch64*|arm64|armv8*) arch="arm64" ;;
-		*) echo "uname -m: \"$(uname -m)\"" >&2 ;;
-	esac
-	printf '%s\n' "${system}-${arch}"
-}
+. "$(dirname "$0")/tools/common.sh"
 
 
 #
@@ -105,68 +73,17 @@ function is_linux_host()
 }
 
 
-function get_latest_exec_path
-{
-	local EXEC_NAME="$1"
-
-	# Search latest executable in PATH
-	local exec_path=""
-	local version=0
-	IFS=:
-	for p in $PATH; do
-		unset IFS
-		for name in ${p}/${EXEC_NAME}*; do
-			if [[ -f $name && $name =~ /${EXEC_NAME}(|-([0-9]+))$ ]]; then
-				echo "$name" >&2
-				local v=${BASH_REMATCH[2]}
-				if [ -z "$v" ]; then v=1; fi
-				if [[ $v -gt $version ]]; then
-					exec_path=$name
-					version=$v
-				fi
-			fi
-		done
-	done
-	unset IFS
-	if [ -n "$exec_path" ]; then
-		printf '%s\n' "$exec_path"
-		echo "Using $exec_path" >&2
-	else
-		echo "[ERROR] ${EXEC_NAME} not found." >&2
-		return 1
-	fi
-}
-
-
-function read_target_config
-{
-	local config_file="$1"
-	while IFS= read -r line <&3
-	do
-		if [ -n "$line" ]; then
-			if [[ $line =~ ^[[:space:]]*CLANG_ARGS=\"(.*)\"[[:space:]]*$ ]]; then
-				printf '%s\n' "${BASH_REMATCH[1]}"
-			fi
-		fi
-	done 3< "$config_file"
-}
-
-
 function install_packages()
 {
 	local MODULES="$1"
 	local HOST="$2"
-	if [ -z "$MODULES" ]; then
-		MODULES="sysroot llvm targets"
-	fi
+
 	local packages="wget xz-utils"
 	local llvm_packages="\
 		build-essential \
 		ca-certificates \
-		clang \
 		cmake \
 		libz-dev \
-		lld \
 		ninja-build \
 		python3 \
 	"
@@ -183,7 +100,9 @@ function install_packages()
 				"
 				;;
 			*)	# Targets
-				packages="${packages} ${llvm_packages}"
+				packages="${packages} \
+					${llvm_packages} \
+					patch"
 				if ! is_linux_host "$HOST"; then
 					packages="${packages} \
 						7zip \
@@ -195,6 +114,65 @@ function install_packages()
 
 	sudo apt-get update
 	sudo apt-get install -y --no-install-recommends $packages
+}
+
+
+function install_build_compiler()
+{
+	local MODULES="$1"
+
+	local install_needed=false
+	for module in $MODULES; do
+		case $module in
+			sysroot) ;;
+			llvm) install_needed=true ;;
+			*-musl*) install_needed=true ;;
+		esac
+	done
+
+	if ! $install_needed || \
+		[[ $(clang --version 2>/dev/null) =~ clang\ version\ $LLVM_VER ]]; then
+		return 0
+	fi
+
+	local build="$(get_build_machine_type)"
+	local name
+	local sha256
+	case $build in
+		linux-x64)
+			name="LLVM-${LLVM_VER}-Linux-X64"
+			sha256=$LLVM_X64_SHA256
+			;;
+		linux-arm64)
+			name="LLVM-${LLVM_VER}-Linux-ARM64"
+			sha256=$LLVM_ARM64_SHA256
+			;;
+		*)
+			echo "Build machine not supported (${build})."
+			return 1
+			;;
+	esac
+	sudo rm -rf llvm-release
+	mkdir llvm-release
+	pushd llvm-release
+
+	local tarname="${name}.tar.xz"
+	if [ ! -f "../${tarname}" ]; then
+		show_progress_message "Downloading LLVM ${LLVM_VER} release"
+		local url="${LLVM_URL}/llvm-project/releases/download/llvmorg-${LLVM_VER}/${tarname}"
+		local options=""
+		if tty -s; then
+			options="--show-progress"
+		fi
+		wget -nv -nc -T 120 --tries=20 $options "$url"
+		check_sha256 "$tarname" "$sha256"
+		mv "$tarname" ..
+	fi
+	show_progress_message "Extracting LLVM"
+	tar -xf "../${tarname}"
+	mv "$name" "${LLVM_VER}"
+	export PATH="$(pwd)/${LLVM_VER}/bin:$PATH"
+	popd
 }
 
 
@@ -229,11 +207,15 @@ function build_sysroot()
 	mkdir build
 	pushd build
 
+	show_progress_message "Downloading sysroot for ${arch_name}"
+
 	sudo rm -rf "$SYSROOT_NAME"
 	sudo debootstrap --arch=${arch_name} --variant=minbase \
 		--include=build-essential,symlinks ${suite} "$SYSROOT_NAME"
 	sudo chroot "$SYSROOT_NAME" symlinks -cr .
-	echo -e "\nCreating \"sysroot-${HOST}.tar.xz\" ...\n"
+
+	show_progress_message "Creating \"sysroot-${HOST}.tar.xz\""
+
 	sudo tar -cJvf "../sysroot-${HOST}.tar.xz" "$SYSROOT_NAME"
 	popd
 	sudo rm -rf build
@@ -270,7 +252,7 @@ function build_llvm()
 		sudo rm -rf "${SYSROOT_NAME}"
 		sudo tar -xf "../sysroot-${HOST}.tar.xz"
 		if [ ! -d "${SYSROOT_NAME}/usr/lib/${HOST_NAME}" ]; then
-			echo "[ERROR] Host ${HOST_NAME} not found in sysroot usr/lib."
+			echo "[ERROR] Host ${HOST_NAME} not found in sysroot usr/lib." >&2
 			return 1
 		fi
 
@@ -282,26 +264,37 @@ function build_llvm()
 		SYSROOT_NAME="llvm-mingw"
 		local build="$(get_build_machine_type)"
 		local name
+		local sha256
 		case $build in
 			linux-x64)
-				name="llvm-mingw-${GH_VER_LLVM_MINGW}-msvcrt-ubuntu-${GH_UBNT_VER_LLVM_MINGW}-x86_64"
+				name="llvm-mingw-${LLVM_MINGW_VER}-msvcrt-ubuntu-${LLVM_MINGW_UBNT_VER}-x86_64"
+				sha256=$LLVM_MINGW_X64_SHA256
 				;;
 			linux-arm64)
-				name="llvm-mingw-${GH_VER_LLVM_MINGW}-ucrt-ubuntu-${GH_UBNT_VER_LLVM_MINGW}-aarch64"
+				name="llvm-mingw-${LLVM_MINGW_VER}-ucrt-ubuntu-${LLVM_MINGW_UBNT_VER}-aarch64"
+				sha256=$LLVM_MINGW_ARM64_SHA256
 				;;
 			*)
 				echo "Build machine not supported (${build})."
 				return 1
 				;;
 		esac
-		local url="${GH_URL_LLVM_MINGW}/llvm-mingw/releases/download/${GH_VER_LLVM_MINGW}/${name}.tar.xz"
-		wget -O - -nv -T 120 --tries=20 "$url" | tar xJ
+
+		show_progress_message "Downloading LLVM-MinGW ${LLVM_MINGW_VER} release"
+
+		local tarname="${name}.tar.xz"
+		local url="${LLVM_MINGW_URL}/llvm-mingw/releases/download/${LLVM_MINGW_VER}/${tarname}"
+		wget -nv -nc -T 120 --tries=20 "$url"
+		check_sha256 "$tarname" "$sha256"
+		tar -xf "$tarname"
 		mv "$name" "${SYSROOT_NAME}"
 		export PATH="$(pwd)/${SYSROOT_NAME}/bin:$PATH"
 		if [ ! -d "${SYSROOT_NAME}/${HOST_NAME}" ]; then
-			echo "[ERROR] Host ${HOST_NAME} not supported by llvm-mingw."
+			echo "[ERROR] Host ${HOST_NAME} not supported by llvm-mingw." >&2
 			return 1
 		fi
+
+		show_progress_message "Configuring LLVM"
 
 		set_cmake_var FIND_ROOT_PATH "$(pwd)/${SYSROOT_NAME}/${HOST_NAME}"
 		set_cmake_var GET_RUNTIME_DEPENDENCIES_PLATFORM "windows+pe"
@@ -356,6 +349,9 @@ function build_llvm()
 		-DLLVM_ENABLE_EH=ON \
 		-DLLVM_ENABLE_RTTI=ON \
 		-DLLVM_ENABLE_ZLIB=ON
+
+	show_progress_message "Building LLVM"
+
 	ninja install/strip
 
 	sudo chown -R root:0 clang-cross
@@ -365,7 +361,9 @@ function build_llvm()
 	else
 		local name="llvm-clang-${HOST}.tar.xz"
 	fi
-	echo -e "\nCreating \"${name}\" ...\n"
+
+	show_progress_message "Creating \"${name}\""
+
 	tar -cJvf "../${name}" clang-cross
 	popd
 	sudo rm -rf build-llvm
@@ -375,89 +373,12 @@ function build_llvm()
 }
 
 
-function build_compiler_rt()
-{
-	local TARGET="$1"
-
-	local SYSROOT="$(pwd)/clang-cross/${TARGET}/sysroot"
-	local CLANG_LIB_DIR="$(pwd)/clang-cross/lib/clang"
-	local CLANG_ARGS="$(read_target_config "../targets/${TARGET}/config")"
-
-	sudo rm -rf build-compiler-rt
-	mkdir build-compiler-rt
-	pushd build-compiler-rt
-	local INSTALL_DIR="$(pwd)/install"
-
-	cat - <<-EOF >> toolchain.cmake
-		set(CMAKE_SYSTEM_NAME Linux)
-		set(CMAKE_SYSROOT "${SYSROOT}")
-		set(CMAKE_C_COMPILER clang)
-		set(CMAKE_CXX_COMPILER clang++)
-		set(CMAKE_AR "$(get_latest_exec_path llvm-ar)")
-		set(CMAKE_RANLIB "$(get_latest_exec_path llvm-ranlib)")
-		set(CMAKE_C_COMPILER_TARGET ${TARGET})
-		set(CMAKE_CXX_COMPILER_TARGET ${TARGET})
-		set(CMAKE_ASM_COMPILER_TARGET ${TARGET})
-		set(CMAKE_C_FLAGS_INIT "${CLANG_ARGS}")
-		set(CMAKE_CXX_FLAGS_INIT "${CLANG_ARGS}")
-		set(CMAKE_ASM_FLAGS_INIT "${CLANG_ARGS}")
-		set(CMAKE_LINKER_TYPE LLD)
-		set(CMAKE_C_COMPILER_WORKS TRUE)
-		set(CMAKE_CXX_COMPILER_WORKS TRUE)
-		set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-		set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-		set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-		set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
-	EOF
-
-	cmake -G Ninja \
-		-DCMAKE_BUILD_TYPE=Release \
-		-DCMAKE_TOOLCHAIN_FILE="$(pwd)/toolchain.cmake" \
-		-DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
-		-DCOMPILER_RT_DEFAULT_TARGET_ONLY=ON \
-		-DCOMPILER_RT_USE_BUILTINS_LIBRARY=ON \
-		-DCOMPILER_RT_BUILD_CRT=ON \
-		-DCOMPILER_RT_EXCLUDE_ATOMIC_BUILTIN=OFF \
-		-DLLVM_CMAKE_DIR="" \
-		../../llvm/compiler-rt/lib/builtins
-	ninja install
-
-	cd "${INSTALL_DIR}/lib/linux"
-	local arch="${TARGET%%-*}"
-	for f in clang_rt.crtbegin-*.o; do
-		mv "$f" clang_rt.crtbegin.o
-	done
-	for f in clang_rt.crtend-*.o; do
-		mv "$f" clang_rt.crtend.o
-	done
-	for t in "" S T; do
-		ln -sf clang_rt.crtbegin.o "crtbegin${t}.o"
-		ln -sf clang_rt.crtend.o "crtend${t}.o"
-	done
-	for f in libclang_rt.builtins-*.a; do
-		mv "$f" libclang_rt.builtins.a
-	done
-
-	pushd "$CLANG_LIB_DIR" >/dev/null
-	for version in *; do
-		if [[ -d $version && $version =~ ^[1-9][0-9]*$ ]]; then
-			local dest_dir="${CLANG_LIB_DIR}/${version}/lib/${TARGET}"
-			mkdir -p "$dest_dir"
-			cp -a "${INSTALL_DIR}/lib/linux/." "${dest_dir}/"
-		fi
-	done
-	popd >/dev/null
-
-	popd
-	sudo rm -rf build-compiler-rt
-}
-
-
 function build_target()
 {
 	local HOST="$1"
 	local TARGET="$2"
 	local DEFAULT_TARGET="$3"
+	local SCRIPTS="$(pwd)/scripts/tools"
 
 	sudo rm -rf build
 	mkdir build
@@ -469,81 +390,8 @@ function build_target()
 		local name="../llvm-clang-${HOST}.tar.xz"
 	fi
 	tar -xf "$name"
-	sudo chown -R $(id -u):$(id -g) clang-cross
-	sudo rm -rf ${TARGET}
-	if [ -f "../${TARGET}.tar.xz" ]; then
-		tar -xf "../${TARGET}.tar.xz"
-	else
-		local name="linux-x64_${TARGET}.tar.xz"
-		local url=""
-		case $TARGET in
-			*-gnu*)
-				url="${GH_URL_GNU}/gnu-cross/releases/download/${GH_VER_GNU}/${TARGET}.tar.xz"
-				;;
-			*-musl*)
-				url="${GH_URL_MUSL}/musl-cross/releases/download/x64-${GH_VER_MUSL}/${name}"
-				;;
-			*)
-				echo "Target not supported (${TARGET})."
-				return 1
-				;;
-		esac
-		wget -O - -nv -T 120 --tries=20 "$url" | tar xJ
-	fi
-	find ${TARGET} -exec chmod +w {} \;
-	cp -a ${TARGET}/include clang-cross/
-	cp -a ${TARGET}/lib/gcc clang-cross/lib/
-	cp -a ${TARGET}/${TARGET} clang-cross/
-	rm -rf clang-cross/lib/gcc/${TARGET}/*/{install-tools,plugin}
-	rm -rf clang-cross/${TARGET}/{bin,debug-root,lib}
 
-	local CLANG_ARGS="$(read_target_config "../targets/${TARGET}/config")"
-	echo "Target configuration: \"${CLANG_ARGS}\""
-
-	# Use Clang runtime (compiler-rt) instead of GCC runtime (libgcc_s)
-	# https://clang.llvm.org/docs/Toolchain.html#compiler-runtime
-	local use_compiler_rt
-	case $TARGET in
-		arm-*linux-musleabi*|powerpcle-*linux-musl)
-			use_compiler_rt=false ;;  # Not supported
-		*-gnu*) use_compiler_rt=false ;;  # Incompatible with GNU libc
-		*) use_compiler_rt=true ;;
-	esac
-
-	if $use_compiler_rt; then
-		build_compiler_rt	"$TARGET"
-		CLANG_ARGS="--rtlib=compiler-rt
-${CLANG_ARGS}"
-	fi
-
-	for n in clang:clang clang++:clang++ cpp:clang-cpp; do
-		cat > clang-cross/bin/${TARGET}-${n%%:*} <<-EOF
-			#!/bin/sh
-			exec "\$(dirname "\$0")/${n##*:}" --target=${TARGET} "\$@"
-		EOF
-		chmod +x clang-cross/bin/${TARGET}-${n%%:*}
-		cat > clang-cross/bin/${TARGET}-${n##*:}.cfg <<-EOF
-			--target=${TARGET}
-			--sysroot=<CFGDIR>/../${TARGET}/sysroot
-			${CLANG_ARGS}
-		EOF
-		if [ "$TARGET" != "$DEFAULT_TARGET" ]; then
-			cat > clang-cross/bin/${n##*:}.cfg <<-EOF
-				@${TARGET}-${n##*:}.cfg
-			EOF
-		fi
-	done
-	ln -sf ${TARGET}-clang clang-cross/bin/${TARGET}-cc
-	ln -sf ${TARGET}-clang++ clang-cross/bin/${TARGET}-c++
-	for n in ar:ar c++filt:cxxfilt nm:nm objcopy:objcopy objdump:objdump \
-			ranlib:ranlib size:size strings:strings strip:strip; do
-		cat > clang-cross/bin/${TARGET}-${n%%:*} <<-EOF
-			#!/bin/sh
-			exec "\$(dirname "\$0")/llvm-${n##*:}" "\$@"
-		EOF
-		chmod +x clang-cross/bin/${TARGET}-${n%%:*}
-	done
-	find clang-cross -exec chmod a-w {} \;
+	"${SCRIPTS}/build_target.sh" "$TARGET" "" "$DEFAULT_TARGET"
 
 	if ! is_linux_host "$HOST"; then
 		rename_files_windows "clang-cross/${TARGET}"
@@ -570,11 +418,11 @@ ${CLANG_ARGS}"
 
 	if is_linux_host "$HOST"; then
 		local name="clang-${host_name}_${TARGET}.tar.xz"
-		echo -e "\nCreating \"${name}\" ...\n"
+		show_progress_message "Creating \"${name}\""
 		tar -cJvf "../${name}" "${TARGET}"
 	else
 		local name="clang-${host_name}_${TARGET}.7z"
-		echo -e "\nCreating \"${name}\" ...\n"
+		show_progress_message "Creating \"${name}\""
 		7z a -mx9 "../${name}" "${TARGET}"
 	fi
 	local hash="$(sha256sum "../${name}" | awk '{ print $1 }')"
@@ -592,22 +440,20 @@ TARGET=$2
 DEFAULT_TARGET=$3
 
 if [ -z "$HOST" ]; then
-	echo "[ERROR] Host is missing."
+	echo "[ERROR] Host is missing." >&2
 	exit 1
 fi
 
 if [ -z "$TARGET" ]; then
-	echo "[ERROR] Target is missing."
+	echo "[ERROR] Target is missing." >&2
 	exit 1
 fi
 
 if [[ $TARGET != "sysroot" && $TARGET != "llvm" && \
 		! -f "targets/${TARGET}/config" ]]; then
-	echo "[ERROR] Target not supported (${TARGET})."
+	echo "[ERROR] Target not supported (${TARGET})." >&2
 	exit 1
 fi
-
-install_packages "$TARGET" "$HOST"
 
 if [ -n "$DEFAULT_TARGET" ]; then
 	llvm_tarname="llvm-clang-${HOST}_${DEFAULT_TARGET}.tar.xz"
@@ -627,20 +473,32 @@ else
 	fi
 fi
 
+modules=""
 if is_linux_host "$HOST" && [[ ! -f "sysroot-${HOST}.tar.xz" && \
 		! -f "$llvm_tarname" ]]; then
-	build_sysroot "$HOST"
+	modules="${modules} sysroot"
 fi
-
 if [[ $TARGET != "sysroot" && ! -f "$llvm_tarname" ]]; then
-	url="${GH_URL_CLANG}/clang-cross/releases/download/${GH_VER_CLANG}/${llvm_tarname}"
+	url="${CROSS_CLANG_URL}/clang-cross/releases/download/${CROSS_CLANG_VER}/${llvm_tarname}"
 	if ! wget -nv -nc -T 120 --tries=20 "$url" 2>/dev/null; then
-		build_llvm "$HOST" "$DEFAULT_TARGET"
+		modules="${modules} llvm"
 	fi
 fi
-
 if [[ $TARGET != "sysroot" && $TARGET != "llvm" ]]; then
-	build_target "$HOST" "$TARGET" "$DEFAULT_TARGET"
+	modules="${modules} ${TARGET}"
 fi
+
+install_packages "$modules" "$HOST"
+install_build_compiler "$modules"
+
+for module in $modules; do
+	case $module in
+		sysroot)  build_sysroot "$HOST" ;;
+		llvm)     build_llvm "$HOST" "$DEFAULT_TARGET" ;;
+		*)        build_target "$HOST" "$TARGET" "$DEFAULT_TARGET" ;;
+	esac
+done
+
+rm -rf llvm-release
 
 echo -e "\nDone.\n"
