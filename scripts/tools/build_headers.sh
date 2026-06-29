@@ -35,6 +35,18 @@ install_kernel_headers()
 
 	show_progress_message "Installing kernel headers"
 
+	local system="$(get_build_machine_type)"
+	case ${system%%-*} in
+		macos)
+			# On macOS, some headers required for the installation are missing;
+			# we have to provide them.
+			CPATH="$(brew --prefix libelf)/include${CPATH:+:}${CPATH}"
+			export CPATH="$(dirname "$0")/headers:${CPATH}"
+			PATH="$(brew --prefix gnu-sed)/libexec/gnubin:$PATH"
+			export PATH="$(brew --prefix llvm)/bin:$(brew --prefix lld)/bin:$PATH"
+		;;
+	esac
+
 	make -C "${kernel_path}" \
 		--no-print-directory \
 		BASH="$(which bash)" \

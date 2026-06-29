@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# This script requires a case-sensitive file system.
+# Otherwise some header files will be lost in the sysroot include folder.
+
 set -e -o pipefail
 
 LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
@@ -32,7 +35,11 @@ function install_packages()
 		;;
 		macos)
 			packages="${packages} \
+				bash \
+				gnu-sed \
+				libelf \
 				lld \
+				llvm \
 				ninja \
 				xz \
 			"

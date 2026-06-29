@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# This script requires a case-sensitive file system.
+# Otherwise some header files will be lost in the sysroot include folder.
+
 set -e -o pipefail
 
 . "$(dirname "$0")/common.sh"
@@ -41,14 +44,8 @@ case $TARGET in
 	*) build_musl=false ;;
 esac
 
-# Linux headers install does not work on macOS
-install_linux_headers=true
-if [ "$system" != "linux" ]; then
-	install_linux_headers=false
-fi
-
 # Download the GNU libraries/headers if needed
-if $install_libstdcxx || ! $install_linux_headers || ! $use_compiler_rt; then
+if $install_libstdcxx || ! $use_compiler_rt; then
 	sudo rm -rf ${TARGET}
 	if [ -f "../${TARGET}.tar.xz" ]; then
 		tar -xf "../${TARGET}.tar.xz"
@@ -73,32 +70,24 @@ if $install_libstdcxx || ! $install_linux_headers || ! $use_compiler_rt; then
 	fi
 	find ${TARGET} -exec chmod a+w {} \;
 
-	if ! $install_linux_headers; then
-		mkdir -p clang-cross/${TARGET}/sysroot/usr
-		cp -a ${TARGET}/${TARGET}/sysroot/usr/include clang-cross/${TARGET}/sysroot/usr/
+	cp -a ${TARGET}/lib/gcc clang-cross/lib/
+	if $install_libstdcxx; then
+		cp -a ${TARGET}/include clang-cross/
 	fi
-	if $install_libstdcxx || ! $use_compiler_rt; then
-		cp -a ${TARGET}/lib/gcc clang-cross/lib/
-		if $install_libstdcxx; then
-			cp -a ${TARGET}/include clang-cross/
-		fi
-		cp -a ${TARGET}/${TARGET} clang-cross/
-		rm -rf clang-cross/lib/gcc/${TARGET}/*/{install-tools,plugin}
-		rm -rf clang-cross/${TARGET}/{bin,debug-root,lib}
-		if ! $install_libstdcxx; then
-			rm -rf clang-cross/${TARGET}/include
-		fi
-		# Do not rebuild musl if we already have it, built by GCC.
-		# Comment out the line below if you want to force a rebuild by Clang.
-		build_musl=false
+	cp -a ${TARGET}/${TARGET} clang-cross/
+	rm -rf clang-cross/lib/gcc/${TARGET}/*/{install-tools,plugin}
+	rm -rf clang-cross/${TARGET}/{bin,debug-root,lib}
+	if ! $install_libstdcxx; then
+		rm -rf clang-cross/${TARGET}/include
 	fi
+	# Do not rebuild musl if we already have it, built by GCC.
+	# Comment out the line below if you want to force a rebuild by Clang.
+	build_musl=false
 fi
 
 if $build_musl; then
-	if $install_linux_headers; then
-		rm -rf "clang-cross/${TARGET}/sysroot/usr/include"
-		"${SCRIPTS}/build_headers.sh" "$TARGET"
-	fi
+	rm -rf "clang-cross/${TARGET}/sysroot/usr/include"
+	"${SCRIPTS}/build_headers.sh" "$TARGET"
 	"${SCRIPTS}/build_musl.sh" "$TARGET" "$LLVM_PATH" $use_compiler_rt headers
 fi
 
