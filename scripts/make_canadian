@@ -128,7 +128,7 @@ function install_build_compiler()
 		case $module in
 			sysroot) ;;
 			llvm)
-				install_needed=true
+				install_needed=false
 				if is_linux_host "$HOST"; then
 					install_needed=true
 				fi
