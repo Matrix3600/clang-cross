@@ -5,14 +5,13 @@
 
 set -e -o pipefail
 
-LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
-
 . "$(dirname "$0")/tools/common.sh"
 
 
 function install_packages()
 {
-	local system="$(get_build_machine_type)"
+	local system
+	system="$(get_build_machine_type)"
 	system=${system%%-*}
 
 	local packages="
@@ -62,10 +61,16 @@ function build_llvm()
 {
 	local DEFAULT_TARGET="$1"
 
+	local llvm_version
+	llvm_version="$(get_llvm_version)"
+
 	sudo rm -rf build-llvm
 	mkdir build-llvm
 	pushd build-llvm
 
+	show_progress_message "Configuring LLVM ${llvm_version}"
+
+	local LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 	local options=""
 	if [ -n "$DEFAULT_TARGET" ]; then
 		options="${options} -DLLVM_DEFAULT_TARGET_TRIPLE=${DEFAULT_TARGET}"
@@ -89,17 +94,18 @@ function build_llvm()
 		-DLLVM_ENABLE_RTTI=ON \
 		-DLLVM_ENABLE_ZLIB=ON
 
-	show_progress_message "Building LLVM"
+	show_progress_message "Building LLVM ${llvm_version}"
 
 	ninja install/strip
 
 	sudo chown -R root:0 clang-cross
 
-	local host_name="$(get_build_machine_type)"
+	local host_name
+	host_name="$(get_build_machine_type)"
 	if [ -n "$DEFAULT_TARGET" ]; then
-		local name="llvm-clang-${host_name}_${DEFAULT_TARGET}.tar.xz"
+		local name="llvm-clang-${host_name}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
 	else
-		local name="llvm-clang-${host_name}.tar.xz"
+		local name="llvm-clang-${host_name}-${llvm_version}.tar.xz"
 	fi
 
 	show_progress_message "Creating \"${name}\""
@@ -119,15 +125,19 @@ function build_target()
 	local DEFAULT_TARGET="$2"
 	local SCRIPTS="$(pwd)/scripts/tools"
 
+	local llvm_version
+	llvm_version="$(get_llvm_version)"
+
 	sudo rm -rf build
 	mkdir build
 	pushd build
 
-	local host_name="$(get_build_machine_type)"
+	local host_name
+	host_name="$(get_build_machine_type)"
 	if [ -n "$DEFAULT_TARGET" ]; then
-		local name="../llvm-clang-${host_name}_${DEFAULT_TARGET}.tar.xz"
+		local name="../llvm-clang-${host_name}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
 	else
-		local name="../llvm-clang-${host_name}.tar.xz"
+		local name="../llvm-clang-${host_name}-${llvm_version}.tar.xz"
 	fi
 	tar -xf "$name"
 
@@ -143,7 +153,8 @@ function build_target()
 	show_progress_message "Creating \"${name}\""
 
 	tar -cJvf "../${name}" "${TARGET}"
-	local hash="$(sha256sum "../${name}" | awk '{ print $1 }')"
+	local hash
+	hash="$(sha256sum "../${name}" | awk '{ print $1 }')"
 	printf '%s *%s\n' "$hash" "$name" > "../${name}.sha256"
 	popd
 	sudo rm -rf build
@@ -168,16 +179,18 @@ fi
 
 install_packages
 
+llvm_version="$(get_llvm_version)"
+
 host_name="$(get_build_machine_type)"
 if [ -n "$DEFAULT_TARGET" ]; then
-	llvm_tarname="llvm-clang-${host_name}_${DEFAULT_TARGET}.tar.xz"
+	llvm_tarname="llvm-clang-${host_name}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
 else
-	llvm_tarname="llvm-clang-${host_name}.tar.xz"
+	llvm_tarname="llvm-clang-${host_name}-${llvm_version}.tar.xz"
 	if [ ! -f "$llvm_tarname" ]; then
-		for name in llvm-clang-${host_name}_*.tar.xz; do
-			if [[ -f $name && $name =~ ^llvm-clang-${host_name}_(.+)\.tar\.xz$ ]]; then
+		for name in llvm-clang-${host_name}-${llvm_version}_*.tar.xz; do
+			if [[ -f $name && $name =~ ^llvm-clang-${host_name}-${llvm_version}_(.+)\.tar\.xz$ ]]; then
 				DEFAULT_TARGET=${BASH_REMATCH[1]}
-				llvm_tarname="llvm-clang-${host_name}_${DEFAULT_TARGET}.tar.xz"
+				llvm_tarname="llvm-clang-${host_name}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
 				break
 			fi
 		done

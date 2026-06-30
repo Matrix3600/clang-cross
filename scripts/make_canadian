@@ -4,8 +4,6 @@
 
 set -e -o pipefail
 
-LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
-
 . "$(dirname "$0")/tools/common.sh"
 
 
@@ -120,58 +118,88 @@ function install_packages()
 function install_build_compiler()
 {
 	local MODULES="$1"
+	local HOST="$2"
+
+	local llvm_version
+	llvm_version="$(get_llvm_version)"
 
 	local install_needed=false
 	for module in $MODULES; do
 		case $module in
 			sysroot) ;;
-			llvm) install_needed=true ;;
+			llvm)
+				install_needed=true
+				if is_linux_host "$HOST"; then
+					install_needed=true
+				fi
+				;;
 			*-musl*) install_needed=true ;;
 		esac
 	done
 
 	if ! $install_needed || \
-		[[ $(clang --version 2>/dev/null) =~ clang\ version\ $LLVM_VER ]]; then
+		[[ $(clang --version 2>/dev/null) =~ clang\ version\ ${llvm_version} ]]; then
 		return 0
 	fi
 
-	local build="$(get_build_machine_type)"
-	local name
-	local sha256
+	local build
+	build="$(get_build_machine_type)"
+	local llvm_name
+	local llvm_sha256
 	case $build in
 		linux-x64)
-			name="LLVM-${LLVM_VER}-Linux-X64"
-			sha256=$LLVM_X64_SHA256
+			llvm_name="LLVM-${LLVM_VER}-Linux-X64"
+			llvm_sha256=$LLVM_X64_SHA256
 			;;
 		linux-arm64)
-			name="LLVM-${LLVM_VER}-Linux-ARM64"
-			sha256=$LLVM_ARM64_SHA256
+			llvm_name="LLVM-${LLVM_VER}-Linux-ARM64"
+			llvm_sha256=$LLVM_ARM64_SHA256
 			;;
 		*)
 			echo "Build machine not supported (${build})."
 			return 1
 			;;
 	esac
-	sudo rm -rf llvm-release
-	mkdir llvm-release
-	pushd llvm-release
+	sudo rm -rf build-compiler
+	mkdir build-compiler
+	pushd build-compiler
 
-	local tarname="${name}.tar.xz"
+	local llvm_bin_path=""
+
+	local tarname="llvm-clang-${build}-${llvm_version}.tar.xz"
 	if [ ! -f "../${tarname}" ]; then
-		show_progress_message "Downloading LLVM ${LLVM_VER} release"
-		local url="${LLVM_URL}/llvm-project/releases/download/llvmorg-${LLVM_VER}/${tarname}"
-		local options=""
-		if tty -s; then
-			options="--show-progress"
+		url="${CROSS_CLANG_URL}/clang-cross/releases/download/${CROSS_CLANG_LATEST}/${tarname}"
+		if wget -nv -nc -T 120 --tries=20 $options "$url" 2>/dev/null; then
+			show_progress_message "Downloading llvm-clang-cross compiler for ${build}"
+			echo "${url}"
+			mv "$tarname" ..
 		fi
-		wget -nv -nc -T 120 --tries=20 $options "$url"
-		check_sha256 "$tarname" "$sha256"
-		mv "$tarname" ..
 	fi
-	show_progress_message "Extracting LLVM"
-	tar -xf "../${tarname}"
-	mv "$name" "${LLVM_VER}"
-	export PATH="$(pwd)/${LLVM_VER}/bin:$PATH"
+	if [ -f "../${tarname}" ]; then
+		tar -xf "../${tarname}"
+		llvm_bin_path="$(pwd)/clang-cross/bin"
+	fi
+
+	if [ -z "$llvm_bin_path" ]; then
+		local tarname="${llvm_name}.tar.xz"
+		if [ ! -f "../${tarname}" ]; then
+			show_progress_message "Downloading LLVM ${LLVM_VER} release"
+			local url="${LLVM_URL}/llvm-project/releases/download/llvmorg-${LLVM_VER}/${tarname}"
+			local options=""
+			if tty -s; then
+				options="--show-progress"
+			fi
+			wget -nv -nc -T 120 --tries=20 $options "$url"
+			check_sha256 "$tarname" "$llvm_sha256"
+			mv "$tarname" ..
+		fi
+		show_progress_message "Extracting LLVM"
+		tar -xf "../${tarname}"
+		mv "$llvm_name" "llvm-${LLVM_VER}"
+		llvm_bin_path="$(pwd)/llvm-${LLVM_VER}/bin"
+	fi
+
+	export PATH="${llvm_bin_path}:$PATH"
 	popd
 }
 
@@ -179,7 +207,8 @@ function install_build_compiler()
 function build_sysroot()
 {
 	local HOST="$1"
-	local HOST_NAME="$(sed 's/-unknown//g' <<< "$HOST")"
+	local HOST_NAME
+	HOST_NAME="$(sed 's/-unknown//g' <<< "$HOST")"
 	local arch_name
 	local suite
 
@@ -232,10 +261,14 @@ function build_llvm()
 {
 	local HOST="$1"
 	local DEFAULT_TARGET="$2"
-	local HOST_NAME="$(sed 's/-unknown//g' <<< "$HOST")"
 
+	local HOST_NAME
+	HOST_NAME="$(sed 's/-unknown//g' <<< "$HOST")"
 	local SYSROOT_NAME=""
 	local CC_FLAGS=""
+
+	local llvm_version
+	llvm_version="$(get_llvm_version)"
 
 	sudo rm -rf build-llvm
 	mkdir build-llvm
@@ -262,7 +295,8 @@ function build_llvm()
 	else
 		set_cmake_var SYSTEM_NAME Windows
 		SYSROOT_NAME="llvm-mingw"
-		local build="$(get_build_machine_type)"
+		local build
+		build="$(get_build_machine_type)"
 		local name
 		local sha256
 		case $build in
@@ -294,7 +328,7 @@ function build_llvm()
 			return 1
 		fi
 
-		show_progress_message "Configuring LLVM"
+		show_progress_message "Configuring LLVM ${llvm_version}"
 
 		set_cmake_var FIND_ROOT_PATH "$(pwd)/${SYSROOT_NAME}/${HOST_NAME}"
 		set_cmake_var GET_RUNTIME_DEPENDENCIES_PLATFORM "windows+pe"
@@ -328,6 +362,7 @@ function build_llvm()
 	echo -e "\n*** CMAKE toolchain file ***\n"
 	cat toolchain.cmake
 
+	local LLVM_TARGETS="AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;X86"
 	local options=""
 	if [ -n "$DEFAULT_TARGET" ]; then
 		options="${options} -DLLVM_DEFAULT_TARGET_TRIPLE=${DEFAULT_TARGET}"
@@ -350,16 +385,16 @@ function build_llvm()
 		-DLLVM_ENABLE_RTTI=ON \
 		-DLLVM_ENABLE_ZLIB=ON
 
-	show_progress_message "Building LLVM"
+	show_progress_message "Building LLVM ${llvm_version}"
 
 	ninja install/strip
 
 	sudo chown -R root:0 clang-cross
 
 	if [ -n "$DEFAULT_TARGET" ]; then
-		local name="llvm-clang-${HOST}_${DEFAULT_TARGET}.tar.xz"
+		local name="llvm-clang-${HOST}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
 	else
-		local name="llvm-clang-${HOST}.tar.xz"
+		local name="llvm-clang-${HOST}-${llvm_version}.tar.xz"
 	fi
 
 	show_progress_message "Creating \"${name}\""
@@ -380,14 +415,17 @@ function build_target()
 	local DEFAULT_TARGET="$3"
 	local SCRIPTS="$(pwd)/scripts/tools"
 
+	local llvm_version
+	llvm_version="$(get_llvm_version)"
+
 	sudo rm -rf build
 	mkdir build
 	pushd build
 
 	if [ -n "$DEFAULT_TARGET" ]; then
-		local name="../llvm-clang-${HOST}_${DEFAULT_TARGET}.tar.xz"
+		local name="../llvm-clang-${HOST}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
 	else
-		local name="../llvm-clang-${HOST}.tar.xz"
+		local name="../llvm-clang-${HOST}-${llvm_version}.tar.xz"
 	fi
 	tar -xf "$name"
 
@@ -397,7 +435,8 @@ function build_target()
 		rename_files_windows "clang-cross/${TARGET}"
 	fi
 
-	local host_name="$(sed 's/-unknown//g' <<< "$HOST")"
+	local host_name
+	host_name="$(sed 's/-unknown//g' <<< "$HOST")"
 	case $host_name in
 		aarch64-linux-gnu)
 			host_name="linux-arm64" ;;
@@ -425,7 +464,8 @@ function build_target()
 		show_progress_message "Creating \"${name}\""
 		7z a -mx9 "../${name}" "${TARGET}"
 	fi
-	local hash="$(sha256sum "../${name}" | awk '{ print $1 }')"
+	local hash
+	hash="$(sha256sum "../${name}" | awk '{ print $1 }')"
 	printf '%s *%s\n' "$hash" "$name" > "../${name}.sha256"
 	popd
 	sudo rm -rf build
@@ -455,15 +495,17 @@ if [[ $TARGET != "sysroot" && $TARGET != "llvm" && \
 	exit 1
 fi
 
+llvm_version="$(get_llvm_version)"
+
 if [ -n "$DEFAULT_TARGET" ]; then
-	llvm_tarname="llvm-clang-${HOST}_${DEFAULT_TARGET}.tar.xz"
+	llvm_tarname="llvm-clang-${HOST}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
 else
-	llvm_tarname="llvm-clang-${HOST}.tar.xz"
+	llvm_tarname="llvm-clang-${HOST}-${llvm_version}.tar.xz"
 	if [ ! -f "$llvm_tarname" ]; then
-		for name in llvm-clang-${HOST}_*.tar.xz; do
-			if [[ -f $name && $name =~ ^llvm-clang-${HOST}_(.+)\.tar\.xz$ ]]; then
+		for name in llvm-clang-${HOST}-${llvm_version}_*.tar.xz; do
+			if [[ -f $name && $name =~ ^llvm-clang-${HOST}-${llvm_version}_(.+)\.tar\.xz$ ]]; then
 				DEFAULT_TARGET=${BASH_REMATCH[1]}
-				llvm_tarname="llvm-clang-${HOST}_${DEFAULT_TARGET}.tar.xz"
+				llvm_tarname="llvm-clang-${HOST}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
 				break
 			fi
 		done
@@ -489,7 +531,7 @@ if [[ $TARGET != "sysroot" && $TARGET != "llvm" ]]; then
 fi
 
 install_packages "$modules" "$HOST"
-install_build_compiler "$modules"
+install_build_compiler "$modules" "$HOST"
 
 for module in $modules; do
 	case $module in
@@ -499,6 +541,6 @@ for module in $modules; do
 	esac
 done
 
-rm -rf llvm-release
+rm -rf build-compiler
 
 echo -e "\nDone.\n"

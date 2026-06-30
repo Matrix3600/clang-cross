@@ -5,7 +5,8 @@ CROSS_GNU_VER="20260515"
 CROSS_MUSL_URL="https://github.com/Matrix3600"
 CROSS_MUSL_VER="20260616"
 CROSS_CLANG_URL="https://github.com/Matrix3600"
-CROSS_CLANG_VER="20260630-pre"
+CROSS_CLANG_VER="20260630"
+CROSS_CLANG_LATEST="latest-llvm-builds"
 
 MUSL_URL="https://musl.libc.org/releases"
 MUSL_VER="1.2.6"
@@ -27,7 +28,8 @@ function check_sha256()
 {
 	local FILENAME="$1"
 	local SHA256="$2"
-	local chksum="$(sha256sum "$FILENAME")"
+	local chksum
+	chksum="$(sha256sum "$FILENAME")"
 	chksum="${chksum%%[[:space:]]*}"
 	
 	if [ "$chksum" != "$SHA256" ]; then
@@ -93,6 +95,30 @@ function get_latest_exec_path
 		echo "[ERROR] ${EXEC_NAME} not found." >&2
 		return 1
 	fi
+}
+
+
+function get_llvm_version()
+{
+	local ROOT_PATH="$1"
+	if [ -z "$ROOT_PATH" ]; then ROOT_PATH="."; fi
+	local version_file="${ROOT_PATH}/llvm/cmake/Modules/LLVMVersion.cmake"
+	local major="0"
+	local minor="0"
+	local patch="0"
+	while IFS= read -r line <&3
+	do
+		if [ -n "$line" ]; then
+			if [[ $line =~ set\(LLVM_VERSION_MAJOR\ ([0-9]+)\) ]]; then
+				major="${BASH_REMATCH[1]}"
+			elif [[ $line =~ set\(LLVM_VERSION_MINOR\ ([0-9]+)\) ]]; then
+				minor="${BASH_REMATCH[1]}"
+			elif [[ $line =~ set\(LLVM_VERSION_PATCH\ ([0-9]+)\) ]]; then
+				patch="${BASH_REMATCH[1]}"
+			fi
+		fi
+	done 3< "$version_file"
+	printf '%s\n' "${major}.${minor}.${patch}"
 }
 
 
