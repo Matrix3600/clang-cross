@@ -130,7 +130,7 @@ jobs:
               --title="Latest LLVM compiler builds" \
               --notes "The latest LLVM builds."
           fi
-          for name in llvm-clang-${{ env.TOOLCHAIN_HOST_NAME }}*.tar.xz; do
+          for name in llvm-clang-*.tar.xz; do
             gh release upload "$tag" "$name"
           done
 
