@@ -128,7 +128,7 @@ jobs:
           if [ "$(gh release view "$tag" 2>&1)" == "release not found" ]; then
             gh release create "$tag" \
               --title="Latest LLVM compiler builds" \
-              --notes "The latest LLVM builds."
+              --notes "The latest LLVM builds created by this project."
           fi
           for name in llvm-clang-*.tar.xz; do
             gh release upload "$tag" "$name"

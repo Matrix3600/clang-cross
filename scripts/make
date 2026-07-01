@@ -100,12 +100,12 @@ function build_llvm()
 
 	sudo chown -R root:0 clang-cross
 
-	local host_name
-	host_name="$(get_build_machine_type)"
+	local host_type
+	host_type="$(get_build_machine_type)"
 	if [ -n "$DEFAULT_TARGET" ]; then
-		local name="llvm-clang-${host_name}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
+		local name="llvm-clang-${host_type}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
 	else
-		local name="llvm-clang-${host_name}-${llvm_version}.tar.xz"
+		local name="llvm-clang-${host_type}-${llvm_version}.tar.xz"
 	fi
 
 	show_progress_message "Creating \"${name}\""
@@ -132,12 +132,12 @@ function build_target()
 	mkdir build
 	pushd build
 
-	local host_name
-	host_name="$(get_build_machine_type)"
+	local host_type
+	host_type="$(get_build_machine_type)"
 	if [ -n "$DEFAULT_TARGET" ]; then
-		local name="../llvm-clang-${host_name}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
+		local name="../llvm-clang-${host_type}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
 	else
-		local name="../llvm-clang-${host_name}-${llvm_version}.tar.xz"
+		local name="../llvm-clang-${host_type}-${llvm_version}.tar.xz"
 	fi
 	tar -xf "$name"
 
@@ -148,7 +148,7 @@ function build_target()
 	mv clang-cross ${TARGET}
 	sudo chown -R root:0 ${TARGET}
 
-	local name="clang-${host_name}_${TARGET}.tar.xz"
+	local name="clang-${host_type}_${TARGET}.tar.xz"
 
 	show_progress_message "Creating \"${name}\""
 
@@ -180,17 +180,18 @@ fi
 install_packages
 
 llvm_version="$(get_llvm_version)"
+host_type="$(get_build_machine_type)"
+llvm_prefix="llvm-clang-${host_type}-${llvm_version}"
 
-host_name="$(get_build_machine_type)"
 if [ -n "$DEFAULT_TARGET" ]; then
-	llvm_tarname="llvm-clang-${host_name}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
+	llvm_tarname="${llvm_prefix}_${DEFAULT_TARGET}.tar.xz"
 else
-	llvm_tarname="llvm-clang-${host_name}-${llvm_version}.tar.xz"
+	llvm_tarname="${llvm_prefix}.tar.xz"
 	if [ ! -f "$llvm_tarname" ]; then
-		for name in llvm-clang-${host_name}-${llvm_version}_*.tar.xz; do
-			if [[ -f $name && $name =~ ^llvm-clang-${host_name}-${llvm_version}_(.+)\.tar\.xz$ ]]; then
+		for name in ${llvm_prefix}_*.tar.xz; do
+			if [[ -f $name && $name =~ ^${llvm_prefix}_(.+)\.tar\.xz$ ]]; then
 				DEFAULT_TARGET=${BASH_REMATCH[1]}
-				llvm_tarname="llvm-clang-${host_name}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
+				llvm_tarname="${llvm_prefix}_${DEFAULT_TARGET}.tar.xz"
 				break
 			fi
 		done

@@ -328,8 +328,6 @@ function build_llvm()
 			return 1
 		fi
 
-		show_progress_message "Configuring LLVM ${llvm_version}"
-
 		set_cmake_var FIND_ROOT_PATH "$(pwd)/${SYSROOT_NAME}/${HOST_NAME}"
 		set_cmake_var GET_RUNTIME_DEPENDENCIES_PLATFORM "windows+pe"
 		set_cmake_var C_COMPILER "${HOST_NAME}-clang"
@@ -346,6 +344,8 @@ function build_llvm()
 			fi
 		done
 	fi
+
+	show_progress_message "Configuring LLVM ${llvm_version}"
 
 	cat - <<-EOF >> toolchain.cmake
 		set(CMAKE_C_COMPILER_TARGET $HOST_NAME)
@@ -391,10 +391,12 @@ function build_llvm()
 
 	sudo chown -R root:0 clang-cross
 
+	local host_type
+	host_type="$(get_host_type "$HOST")"
 	if [ -n "$DEFAULT_TARGET" ]; then
-		local name="llvm-clang-${HOST}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
+		local name="llvm-clang-${host_type}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
 	else
-		local name="llvm-clang-${HOST}-${llvm_version}.tar.xz"
+		local name="llvm-clang-${host_type}-${llvm_version}.tar.xz"
 	fi
 
 	show_progress_message "Creating \"${name}\""
@@ -422,10 +424,12 @@ function build_target()
 	mkdir build
 	pushd build
 
+	local host_type
+	host_type="$(get_host_type "$HOST")"
 	if [ -n "$DEFAULT_TARGET" ]; then
-		local name="../llvm-clang-${HOST}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
+		local name="../llvm-clang-${host_type}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
 	else
-		local name="../llvm-clang-${HOST}-${llvm_version}.tar.xz"
+		local name="../llvm-clang-${host_type}-${llvm_version}.tar.xz"
 	fi
 	tar -xf "$name"
 
@@ -435,32 +439,17 @@ function build_target()
 		rename_files_windows "clang-cross/${TARGET}"
 	fi
 
-	local host_name
-	host_name="$(sed 's/-unknown//g' <<< "$HOST")"
-	case $host_name in
-		aarch64-linux-gnu)
-			host_name="linux-arm64" ;;
-		aarch64-w64-mingw32)
-			host_name="win-arm64" ;;
-		riscv64-linux-gnu)
-			host_name="linux-riscv64" ;;
-		x86_64-linux-gnu)
-			host_name="linux-x64" ;;
-		x86_64-w64-mingw32)
-			host_name="win-x64" ;;
-	esac
-
 	# Tarballs
 	sudo rm -rf ${TARGET}
 	mv clang-cross ${TARGET}
 	sudo chown -R root:0 ${TARGET}
 
 	if is_linux_host "$HOST"; then
-		local name="clang-${host_name}_${TARGET}.tar.xz"
+		local name="clang-${host_type}_${TARGET}.tar.xz"
 		show_progress_message "Creating \"${name}\""
 		tar -cJvf "../${name}" "${TARGET}"
 	else
-		local name="clang-${host_name}_${TARGET}.7z"
+		local name="clang-${host_type}_${TARGET}.7z"
 		show_progress_message "Creating \"${name}\""
 		7z a -mx9 "../${name}" "${TARGET}"
 	fi
@@ -496,16 +485,18 @@ if [[ $TARGET != "sysroot" && $TARGET != "llvm" && \
 fi
 
 llvm_version="$(get_llvm_version)"
+host_type="$(get_host_type "$HOST")"
+llvm_prefix="llvm-clang-${host_type}-${llvm_version}"
 
 if [ -n "$DEFAULT_TARGET" ]; then
-	llvm_tarname="llvm-clang-${HOST}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
+	llvm_tarname="${llvm_prefix}_${DEFAULT_TARGET}.tar.xz"
 else
-	llvm_tarname="llvm-clang-${HOST}-${llvm_version}.tar.xz"
+	llvm_tarname="${llvm_prefix}.tar.xz"
 	if [ ! -f "$llvm_tarname" ]; then
-		for name in llvm-clang-${HOST}-${llvm_version}_*.tar.xz; do
-			if [[ -f $name && $name =~ ^llvm-clang-${HOST}-${llvm_version}_(.+)\.tar\.xz$ ]]; then
+		for name in ${llvm_prefix}_*.tar.xz; do
+			if [[ -f $name && $name =~ ^${llvm_prefix}_(.+)\.tar\.xz$ ]]; then
 				DEFAULT_TARGET=${BASH_REMATCH[1]}
-				llvm_tarname="llvm-clang-${HOST}-${llvm_version}_${DEFAULT_TARGET}.tar.xz"
+				llvm_tarname="${llvm_prefix}_${DEFAULT_TARGET}.tar.xz"
 				break
 			fi
 		done

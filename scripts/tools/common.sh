@@ -64,6 +64,28 @@ function get_build_machine_type()
 }
 
 
+function get_host_type()
+{
+	local HOST="$1"
+	
+	local host_type
+	host_type="$(sed 's/-unknown//g' <<< "$HOST")"
+	case $host_type in
+		aarch64-linux-gnu)
+			host_type="linux-arm64" ;;
+		aarch64-w64-mingw32)
+			host_type="win-arm64" ;;
+		riscv64-linux-gnu)
+			host_type="linux-riscv64" ;;
+		x86_64-linux-gnu)
+			host_type="linux-x64" ;;
+		x86_64-w64-mingw32)
+			host_type="win-x64" ;;
+	esac
+	printf '%s\n' "$host_type"
+}
+
+
 function get_latest_exec_path
 {
 	local EXEC_NAME="$1"

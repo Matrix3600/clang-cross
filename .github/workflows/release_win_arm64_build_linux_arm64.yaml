@@ -28,7 +28,7 @@ jobs:
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
-          name: "llvm-clang-${{ env.TOOLCHAIN_HOST }}"
+          name: "llvm-clang-${{ env.TOOLCHAIN_HOST_NAME }}"
           path: "llvm-clang-*.tar.xz"
           if-no-files-found: error
           retention-days: 1
@@ -94,7 +94,7 @@ jobs:
       - name: Download clang-cross compiler
         uses: actions/download-artifact@v8
         with:
-          name: "llvm-clang-${{ env.TOOLCHAIN_HOST }}"
+          name: "llvm-clang-${{ env.TOOLCHAIN_HOST_NAME }}"
       - name: Build
         run: |
           ./scripts/make_canadian "${{ env.TOOLCHAIN_HOST }}" "${{ matrix.target }}"
@@ -120,7 +120,7 @@ jobs:
       - name: Download clang-cross compiler
         uses: actions/download-artifact@v8
         with:
-          name: "llvm-clang-${{ env.TOOLCHAIN_HOST }}"
+          name: "llvm-clang-${{ env.TOOLCHAIN_HOST_NAME }}"
       - name: Update compiler release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -129,7 +129,7 @@ jobs:
           if [ "$(gh release view "$tag" 2>&1)" == "release not found" ]; then
             gh release create "$tag" \
               --title="Latest LLVM compiler builds" \
-              --notes "The latest LLVM builds."
+              --notes "The latest LLVM builds created by this project."
           fi
           for name in llvm-clang-*.tar.xz; do
             gh release upload "$tag" "$name"
