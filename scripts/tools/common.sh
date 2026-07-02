@@ -5,7 +5,7 @@ CROSS_GNU_VER="20260515"
 CROSS_MUSL_URL="https://github.com/Matrix3600"
 CROSS_MUSL_VER="20260616"
 CROSS_CLANG_URL="https://github.com/Matrix3600"
-CROSS_CLANG_VER="20260630"
+CROSS_CLANG_VER="latest-llvm-builds"
 CROSS_CLANG_LATEST="latest-llvm-builds"
 
 MUSL_URL="https://musl.libc.org/releases"
