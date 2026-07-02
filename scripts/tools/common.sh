@@ -24,6 +24,16 @@ LLVM_MINGW_UBNT_VER="22.04"
 LLVM_MINGW_X64_SHA256="a1f7968b48ba8d949194d6dee6c76f3cd0f61cba91658599af2c2c834a55ab87"
 LLVM_MINGW_ARM64_SHA256="e7e5d135d93d3f2a3beaaea633a5b0e66ac75391a53feae654391913dd76102b"
 
+#LINUX_URL="https://www.kernel.org/pub/linux/kernel/v5.x/linux-5.4.302.tar.xz"
+#LINUX_SHA256=ae6a3207f12aa4d6cfb0fa793ec9da4a6fcdfdcb57d869d63d6b77e3a8c1423d
+#LINUX_LOONGARCH_URL="https://www.kernel.org/pub/linux/kernel/v5.x/linux-5.19.16.tar.xz"
+#LINUX_LOONGARCH_SHA256=a1ebaf667e1059ae2d72aa6374a4d6e2febc0b8ccda6a124687acc2ea961e08d
+
+LINUX_URL="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/snapshot/linux-5.4.tar.gz"
+LINUX_SHA256=0290ec627aeb7298c764fadc7d5783360b26e4a1228c986a4a2eb798fbf7931d
+LINUX_LOONGARCH_URL="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/snapshot/linux-5.19.tar.gz"
+LINUX_LOONGARCH_SHA256=11614fc737638f693d02bf0d95422dfe2b3bcf3088196cd1c4c799cfdf675b70
+
 
 function check_sha256()
 {
