@@ -45,6 +45,7 @@ jobs:
           submodules: true
       - name: Download sysroot
         uses: actions/download-artifact@v8
+        continue-on-error: true
         with:
           name: "sysroot-${{ env.TOOLCHAIN_HOST }}"
       - name: Build
