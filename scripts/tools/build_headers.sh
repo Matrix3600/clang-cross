@@ -79,15 +79,20 @@ if [ -z "$TARGET" ]; then
 	exit 1
 fi
 
-LINUX_URL="https://www.kernel.org/pub/linux/kernel/v5.x"
+# LINUX_URL="https://www.kernel.org/pub/linux/kernel/v5.x"
+LINUX_URL="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/snapshot"
 case ${TARGET%%-*} in
 	loongarch*)
-		LINUX_VER=5.19.16
-		LINUX_SHA256=a1ebaf667e1059ae2d72aa6374a4d6e2febc0b8ccda6a124687acc2ea961e08d
+#		LINUX_VER=5.19.16
+#		LINUX_SHA256=a1ebaf667e1059ae2d72aa6374a4d6e2febc0b8ccda6a124687acc2ea961e08d
+		LINUX_VER=5.19
+		LINUX_SHA256=11614fc737638f693d02bf0d95422dfe2b3bcf3088196cd1c4c799cfdf675b70
 		;;
 	*)
-		LINUX_VER=5.4.302
-		LINUX_SHA256=ae6a3207f12aa4d6cfb0fa793ec9da4a6fcdfdcb57d869d63d6b77e3a8c1423d
+#		LINUX_VER=5.4.302
+#		LINUX_SHA256=ae6a3207f12aa4d6cfb0fa793ec9da4a6fcdfdcb57d869d63d6b77e3a8c1423d
+		LINUX_VER=5.4
+		LINUX_SHA256=0290ec627aeb7298c764fadc7d5783360b26e4a1228c986a4a2eb798fbf7931d
 		;;
 esac
 
@@ -95,7 +100,7 @@ BUILD_DIR="$(pwd)"
 SRC_DIR="$BUILD_DIR"
 SYSROOT_DIR="$(pwd)/clang-cross/${TARGET}/sysroot"
 
-linux_tarname=linux-${LINUX_VER}.tar.xz
+linux_tarname=linux-${LINUX_VER}.tar.gz
 if [ ! -f "../${linux_tarname}" ]; then
 	show_progress_message "Downloading kernel headers"
 	url="${LINUX_URL}/${linux_tarname}"
