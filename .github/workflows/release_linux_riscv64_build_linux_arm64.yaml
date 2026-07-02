@@ -30,8 +30,8 @@ jobs:
         with:
           name: sysroot-${{ env.TOOLCHAIN_HOST }}
           path: |
-            "sysroot-*.tar.xz"
-            "llvm-clang-${{ env.TOOLCHAIN_HOST_NAME }}*.tar.xz"
+            sysroot-*.tar.xz
+            llvm-clang-${{ env.TOOLCHAIN_HOST_NAME }}*.tar.xz
           if-no-files-found: error
           retention-days: 1
 
