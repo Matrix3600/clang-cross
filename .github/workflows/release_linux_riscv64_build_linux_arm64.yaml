@@ -29,8 +29,10 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: sysroot-${{ env.TOOLCHAIN_HOST }}
-          path: "sysroot-*.tar.xz"
-          if-no-files-found: warn
+          path: |
+            "sysroot-*.tar.xz"
+            "llvm-clang-${{ env.TOOLCHAIN_HOST_NAME }}*.tar.xz"
+          if-no-files-found: error
           retention-days: 1
 
   build-llvm:
@@ -45,7 +47,6 @@ jobs:
           submodules: true
       - name: Download sysroot
         uses: actions/download-artifact@v8
-        continue-on-error: true
         with:
           name: "sysroot-${{ env.TOOLCHAIN_HOST }}"
       - name: Build
