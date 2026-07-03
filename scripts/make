@@ -201,11 +201,13 @@ else
 	fi
 fi
 
+if [[ $CROSS_CLANG_RESUME == "true" && ! -f "$llvm_tarname" ]]; then
+	url="${CROSS_CLANG_URL}/clang-cross/releases/download/${CROSS_CLANG_LATEST}/${llvm_tarname}"
+	wget -nv -nc -T 120 --tries=20 "$url" 2>/dev/null || true
+fi
+
 if [ ! -f "$llvm_tarname" ]; then
-	url="${CROSS_CLANG_URL}/clang-cross/releases/download/${CROSS_CLANG_VER}/${llvm_tarname}"
-	if ! wget -nv -nc -T 120 --tries=20 "$url" 2>/dev/null; then
-		build_llvm "$DEFAULT_TARGET"
-	fi
+	build_llvm "$DEFAULT_TARGET"
 fi
 
 if [ "$TARGET" != "llvm" ]; then

@@ -79,33 +79,32 @@ if [ -z "$TARGET" ]; then
 	exit 1
 fi
 
-LINUX_URL="https://www.kernel.org/pub/linux/kernel/v5.x"
-case ${TARGET%%-*} in
-	loongarch*)
-		LINUX_VER=5.19.16
-		LINUX_SHA256=a1ebaf667e1059ae2d72aa6374a4d6e2febc0b8ccda6a124687acc2ea961e08d
-		;;
-	*)
-		LINUX_VER=5.4.302
-		LINUX_SHA256=ae6a3207f12aa4d6cfb0fa793ec9da4a6fcdfdcb57d869d63d6b77e3a8c1423d
-		;;
-esac
-
 BUILD_DIR="$(pwd)"
 SRC_DIR="$BUILD_DIR"
 SYSROOT_DIR="$(pwd)/clang-cross/${TARGET}/sysroot"
 
-linux_tarname=linux-${LINUX_VER}.tar.xz
+case ${TARGET%%-*} in
+	loongarch*)
+		url=$LINUX_LOONGARCH_URL
+		sha256=$LINUX_LOONGARCH_SHA256
+		;;
+	*)
+		url=$LINUX_URL
+		sha256=$LINUX_SHA256
+		;;
+esac
+
+linux_tarname=$(basename "$url")
 if [ ! -f "../${linux_tarname}" ]; then
 	show_progress_message "Downloading kernel headers"
-	url="${LINUX_URL}/${linux_tarname}"
 	wget -nv -nc -T 120 --tries=20 "$url"
-	check_sha256 "$linux_tarname" "$LINUX_SHA256"
+	check_sha256 "$linux_tarname" "$sha256"
 	mv "$linux_tarname" ..
 fi
-rm -rf "linux-${LINUX_VER}"
+name=${linux_tarname%%.tar*}
+rm -rf "${name}"
 tar -xf "../${linux_tarname}"
-mv "linux-${LINUX_VER}/" "linux/"
+mv "${name}/" "linux/"
 
 sudo find "clang-cross" -exec chmod a+w {} \;
 

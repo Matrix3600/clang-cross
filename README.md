@@ -122,6 +122,7 @@ MIT
 We would like to express our gratitude to the following individuals and projects:
 
 - [cross-tools](https://github.com/cross-tools)
+- [llvm-mingw](https://github.com/mstorsjo/llvm-mingw)
 - [llvm](https://llvm.org)
 - [linux](https://kernel.org)
 - [glibc](https://www.gnu.org/software/libc)

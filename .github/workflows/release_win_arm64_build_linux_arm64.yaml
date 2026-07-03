@@ -29,7 +29,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: "llvm-clang-${{ env.TOOLCHAIN_HOST_NAME }}"
-          path: "llvm-clang-*.tar.xz"
+          path: "llvm-clang-${{ env.TOOLCHAIN_HOST_NAME }}*.tar.xz"
           if-no-files-found: error
           retention-days: 1
 
@@ -132,7 +132,7 @@ jobs:
               --notes "The latest LLVM builds created by this project."
           fi
           for name in llvm-clang-*.tar.xz; do
-            gh release upload "$tag" "$name"
+            gh release upload "$tag" "$name" --clobber
           done
 
   release:
