@@ -15,7 +15,7 @@ These [ready-to-use](https://github.com/Matrix3600/clang-cross/releases) toolcha
 ## Supported targets
 
 | Target                         | Kernel  | Clang  | Libc   |
-|--------------------------------|---------|--------|--------|
+|--------------------------------|:-------:|:------:|:------:|
 | aarch64-unknown-linux-gnu      | 5.4.302 | 22.1.8 | 2.43   |
 | aarch64-unknown-linux-musl     | 5.4.302 | 22.1.8 | 1.2.6  |
 | arm-unknown-linux-gnueabi      | 5.4.302 | 22.1.8 | 2.43   |

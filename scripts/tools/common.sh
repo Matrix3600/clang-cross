@@ -37,7 +37,7 @@ function check_sha256()
 	local chksum
 	chksum="$(sha256sum "$FILENAME")"
 	chksum="${chksum%%[[:space:]]*}"
-	
+
 	if [ "$chksum" != "$SHA256" ]; then
 		echo "[ERROR] Bad SHA256 for ${FILENAME}: ${chksum}, expected ${SHA256}." >&2
 		return 1
@@ -73,7 +73,7 @@ function get_build_machine_type()
 function get_host_type()
 {
 	local HOST="$1"
-	
+
 	local host_type
 	host_type="$(sed 's/-unknown//g' <<< "$HOST")"
 	case $host_type in

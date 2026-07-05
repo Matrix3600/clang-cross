@@ -36,7 +36,7 @@ if [ ! -f musl/Makefile ]; then
 	# Patch
 	pushd "musl" >/dev/null
 	if [ -d "../../patches/musl/${MUSL_VER}" ]; then
-	
+
 		show_progress_message "Patching musl"
 
 		find "../../patches/musl/${MUSL_VER}" -type f -name "*.patch" -print0 | \
@@ -79,7 +79,7 @@ if [[ ! -f "config.mak" || \
 		AR="$(get_latest_exec_path llvm-ar)"
 		RANLIB="$(get_latest_exec_path llvm-ranlib)"
 		CFLAGS="${CFLAGS} -fuse-ld=lld"
-		
+
 		if [ "$USE_COMPILER_RT" == true ]; then
 			dest_dir=""
 			pushd "$CLANG_LIB_DIR" >/dev/null
@@ -91,7 +91,7 @@ if [[ ! -f "config.mak" || \
 			popd >/dev/null
 			if [ -n "$dest_dir" ]; then
 				LDFLAGS="-L\"$dest_dir\" ${LDFLAGS}"
-			fi	
+			fi
 			CFLAGS="--rtlib=compiler-rt ${CFLAGS}"
 		fi
 	else
@@ -141,7 +141,7 @@ if ! $install_headers; then
 		if [ -L "$linkname" ]; then
 			# Note: ln -r doesn't work on macOS
 			ln -sf "../usr/lib/libc.so" "$linkname"
-		fi	
+		fi
 	done
 	popd >/dev/null
 
