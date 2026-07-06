@@ -79,6 +79,12 @@ function install_packages()
 	if [ -z "$MODULES" ]; then
 		return 0
 	fi
+	local qemu_package="qemu-user-static"
+	if uname -v | grep "Ubuntu" >/dev/null && \
+			printf '7.0\n%s' "$(uname -r)" | sort -VC; then
+		# Ubuntu 26
+		qemu_package="qemu-user-binfmt"
+	fi
 
 	local packages="wget xz-utils"
 	local llvm_packages="\
@@ -98,7 +104,7 @@ function install_packages()
 				packages="${packages} \
 					binfmt-support \
 					debootstrap \
-					qemu-user-static \
+					${qemu_package} \
 				"
 				;;
 			*)	# Targets
