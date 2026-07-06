@@ -79,6 +79,8 @@ function install_packages()
 	if [ -z "$MODULES" ]; then
 		return 0
 	fi
+	uname -v
+	uname -r
 	local qemu_package="qemu-user-static"
 	if uname -v | grep "Ubuntu" >/dev/null && \
 			printf '7.0\n%s' "$(uname -r)" | sort -VC; then
