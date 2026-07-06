@@ -1,9 +1,9 @@
-name: Release Linux x64
+name: Release Linux x64/Ubuntu-26
 
 on:
   workflow_dispatch:
   push:
-    tags: ['x64-*']
+    tags: ['u26-x64-*']
 
 permissions:
   contents: read
@@ -127,35 +127,6 @@ jobs:
           path: "clang-*_${{ matrix.target }}.tar.xz*"
           if-no-files-found: error
           retention-days: 1
-
-  compiler-release:
-    name: Compiler release
-    runs-on: ubuntu-26.04
-    permissions:
-      contents: write
-    needs: [build-llvm]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
-      - name: Download clang-cross compiler
-        uses: actions/download-artifact@v8
-        with:
-          name: "llvm-clang-${{ env.TOOLCHAIN_HOST_NAME }}"
-      - name: Update compiler release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          tag=latest-llvm-builds
-          if [ "$(gh release view "$tag" 2>&1)" == "release not found" ]; then
-            gh release create "$tag" \
-              --title="Latest LLVM compiler builds" \
-              --notes "The latest LLVM builds created by this project."
-          fi
-          for name in llvm-clang-*.tar.xz; do
-            gh release upload "$tag" "$name" --clobber
-          done
 
   release:
     name: Release
