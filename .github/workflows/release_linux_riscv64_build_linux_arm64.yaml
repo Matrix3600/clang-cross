@@ -1,9 +1,9 @@
-name: Release Linux RISC-V 64, built on Linux ARM64
+name: Release Linux RISC-V 64, built on Linux ARM64/Ubuntu-26
 
 on:
   workflow_dispatch:
   push:
-    tags: ['riscv64-*']
+    tags: ['u26-riscv64-*']
 
 permissions:
   contents: read
@@ -32,7 +32,7 @@ jobs:
 
   build-sysroot:
     name: Build sysroot
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -54,7 +54,7 @@ jobs:
 
   build-llvm:
     name: Build LLVM
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     needs: [build-sysroot]
     steps:
       - name: Checkout
@@ -79,7 +79,7 @@ jobs:
 
   build-targets:
     name: Build targets
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     needs: [pre-download, build-llvm]
     strategy:
       fail-fast: true
@@ -156,38 +156,9 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  compiler-release:
-    name: Compiler release
-    runs-on: ubuntu-24.04-arm
-    permissions:
-      contents: write
-    needs: [build-llvm]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
-      - name: Download clang-cross compiler
-        uses: actions/download-artifact@v8
-        with:
-          name: "llvm-clang-${{ env.TOOLCHAIN_HOST_NAME }}"
-      - name: Update compiler release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          tag=latest-llvm-builds
-          if [ "$(gh release view "$tag" 2>&1)" == "release not found" ]; then
-            gh release create "$tag" \
-              --title="Latest LLVM compiler builds" \
-              --notes "The latest LLVM builds created by this project."
-          fi
-          for name in llvm-clang-*.tar.xz; do
-            gh release upload "$tag" "$name" --clobber
-          done
-
   release:
     name: Release
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     permissions:
       contents: write
     needs: [build-targets]
