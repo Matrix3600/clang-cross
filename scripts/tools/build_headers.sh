@@ -31,8 +31,6 @@ install_kernel_headers()
 
 	mkdir -p "${BUILD_DIR}/build-kernel-headers"
 
-	local kernel_path="${SRC_DIR}/linux"
-
 	show_progress_message "Installing kernel headers"
 
 	local system
@@ -50,7 +48,7 @@ install_kernel_headers()
 		;;
 	esac
 
-	make -C "${kernel_path}" \
+	make -C "${BUILD_DIR}/linux" \
 		--no-print-directory \
 		BASH="$(which bash)" \
 		LLVM="y" \
@@ -79,8 +77,12 @@ if [ -z "$TARGET" ]; then
 	exit 1
 fi
 
+if [ ! -d "$CROSS_CLANG_TARGET_SOURCE_DIR" ]; then
+	echo "[ERROR] Source directory invalid (${CROSS_CLANG_TARGET_SOURCE_DIR})." >&2
+	exit 1
+fi
+
 BUILD_DIR="$(pwd)"
-SRC_DIR="$BUILD_DIR"
 SYSROOT_DIR="$(pwd)/clang-cross/${TARGET}/sysroot"
 
 case ${TARGET%%-*} in
@@ -94,16 +96,17 @@ case ${TARGET%%-*} in
 		;;
 esac
 
+src_dir="$CROSS_CLANG_TARGET_SOURCE_DIR"
 linux_tarname=$(basename "$url")
-if [ ! -f "../${linux_tarname}" ]; then
+if [ ! -f "${src_dir}/${linux_tarname}" ]; then
 	show_progress_message "Downloading kernel headers"
 	wget -nv -nc -T 120 --tries=20 "$url"
 	check_sha256 "$linux_tarname" "$sha256"
-	mv "$linux_tarname" ..
+	mv "$linux_tarname" "${src_dir}/"
 fi
 name=${linux_tarname%%.tar*}
 rm -rf "${name}"
-tar -xf "../${linux_tarname}"
+tar -xf "${src_dir}/${linux_tarname}"
 mv "${name}/" "linux/"
 
 sudo find "clang-cross" -exec chmod a+w {} \;

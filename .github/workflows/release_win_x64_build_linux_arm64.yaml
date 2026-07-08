@@ -11,8 +11,25 @@ permissions:
 env:
   TOOLCHAIN_HOST: x86_64-w64-mingw32
   TOOLCHAIN_HOST_NAME: win-x64
+  CROSS_CLANG_SOURCE_DIR: source-tarballs
 
 jobs:
+  pre-download:
+    name: Pre-download
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Download tarballs
+        run: |
+          ./scripts/pre-download "$CROSS_CLANG_SOURCE_DIR"
+      - name: Upload tarballs
+        uses: actions/upload-artifact@v7
+        with:
+          name: source-tarballs
+          path: ${{ env.CROSS_CLANG_SOURCE_DIR }}
+          retention-days: 1
+
   build-llvm:
     name: Build LLVM
     runs-on: ubuntu-24.04-arm
@@ -36,7 +53,7 @@ jobs:
   build-targets:
     name: Build targets
     runs-on: ubuntu-24.04-arm
-    needs: [build-llvm]
+    needs: [pre-download, build-llvm]
     strategy:
       fail-fast: true
       matrix:
@@ -91,6 +108,12 @@ jobs:
         with:
           fetch-depth: 1
           submodules: true
+      - name: Download tarballs
+        uses: actions/download-artifact@v8
+        with:
+          name: source-tarballs
+          path: ${{ env.CROSS_CLANG_SOURCE_DIR }}
+          merge-multiple: true
       - name: Download clang-cross compiler
         uses: actions/download-artifact@v8
         with:

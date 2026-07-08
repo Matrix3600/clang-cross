@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+
+set -e -o pipefail
+
+. "$(dirname "$0")/tools/common.sh"
+
+
+function install_packages()
+{
+	local system
+	system="$(get_build_machine_type)"
+	system=${system%%-*}
+
+	local packages="wget"
+	case $system in
+		linux)
+			sudo apt-get update
+			sudo apt-get install -y --no-install-recommends $packages
+		;;
+		macos)
+			packages="${packages} bash"
+			brew update
+			brew install --quiet $packages
+		;;
+	esac
+}
+
+
+function download_package()
+{
+	local url="$1"
+	local sha256="$2"
+	local name="$3"
+	local filename
+	filename=$(basename "$url")
+	if [ ! -f "${DEST_DIR}/${filename}" ]; then
+		if [ "$name" != "-" ]; then
+			if [ -z "$name" ]; then
+				name=$filename
+			fi
+			show_progress_message "Downloading ${name}"
+		fi
+		wget -nv -T 120 --tries=20 -nc --progress=dot:binary -P "$DEST_DIR" "$url"
+		check_sha256 "${DEST_DIR}/${filename}" "$sha256"
+	fi
+}
+
+
+DEST_DIR=$1
+if [ -z "$DEST_DIR" ]; then
+	DEST_DIR="source-tarballs"
+fi
+
+mkdir -p "$DEST_DIR"
+if [ ! -d "$DEST_DIR" ]; then
+	echo "[ERROR] Directory not found ($DEST_DIR)"
+	exit 1
+fi
+
+install_packages
+
+download_package "$LINUX_URL" "$LINUX_SHA256" "kernel headers"
+download_package "$LINUX_LOONGARCH_URL" "$LINUX_LOONGARCH_SHA256" "-"
+download_package "${MUSL_URL}/musl-${MUSL_VER}.tar.gz" "$MUSL_SHA256" "musl"
+
+exit 0

@@ -15,22 +15,28 @@ if [ -z "$TARGET" ]; then
 	exit 1
 fi
 
+if [ ! -d "$CROSS_CLANG_TARGET_SOURCE_DIR" ]; then
+	echo "[ERROR] Source directory invalid (${CROSS_CLANG_TARGET_SOURCE_DIR})." >&2
+	exit 1
+fi
+
 install_headers=false
 if [ "$OPTIONS" == "headers" ]; then
 	install_headers=true
 fi
 
 if [ ! -f musl/Makefile ]; then
+	src_dir="$CROSS_CLANG_TARGET_SOURCE_DIR"
 	musl_tarname=musl-${MUSL_VER}.tar.gz
-	if [ ! -f "../${musl_tarname}" ]; then
+	if [ ! -f "${src_dir}/${musl_tarname}" ]; then
 		show_progress_message "Downloading musl"
 		url="${MUSL_URL}/${musl_tarname}"
 		wget -nv -nc -T 120 --tries=20 "$url"
 		check_sha256 "$musl_tarname" "$MUSL_SHA256"
-		mv "$musl_tarname" ..
+		mv "$musl_tarname" "${src_dir}/"
 	fi
 	rm -rf "musl-${MUSL_VER}"
-	tar -xf "../${musl_tarname}"
+	tar -xf "${src_dir}/${musl_tarname}"
 	mv "musl-${MUSL_VER}/" "musl/"
 
 	# Patch
@@ -52,7 +58,7 @@ fi
 SYSROOT="$(pwd)/clang-cross/${TARGET}/sysroot"
 CLANG_LIB_DIR="$(pwd)/clang-cross/lib/clang"
 CLANG_ARGS="$(read_target_config "../targets/${TARGET}/config")"
-src_dir="$(pwd)/musl"
+musl_dir="$(pwd)/musl"
 
 if [ ! -d "build-libc" ]; then
 	sudo find "clang-cross" -exec chmod a+w {} \;
@@ -104,7 +110,7 @@ if [[ ! -f "config.mak" || \
 		libcc="-lclang_rt.builtins"
 	fi
 
-	echo "${src_dir}/configure" --target=$TARGET --disable-wrapper \
+	echo "${musl_dir}/configure" --target=$TARGET --disable-wrapper \
 		--prefix="${SYSROOT}/usr" --syslibdir="${SYSROOT}/lib" \
 		--enable-optimize=size \
 		CC="$CC" \
@@ -114,7 +120,7 @@ if [[ ! -f "config.mak" || \
 		CFLAGS="${CFLAGS}" \
 		LDFLAGS="$LDFLAGS"
 
-	"${src_dir}/configure" --target=$TARGET --disable-wrapper \
+	"${musl_dir}/configure" --target=$TARGET --disable-wrapper \
 		--prefix="${SYSROOT}/usr" --syslibdir="${SYSROOT}/lib" \
 		--enable-optimize=size \
 		CC="$CC" \
