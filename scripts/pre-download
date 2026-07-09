@@ -53,7 +53,7 @@ fi
 
 mkdir -p "$DEST_DIR"
 if [ ! -d "$DEST_DIR" ]; then
-	echo "[ERROR] Directory not found ($DEST_DIR)"
+	echo "[ERROR] Directory not found ($DEST_DIR)" >&2
 	exit 1
 fi
 
