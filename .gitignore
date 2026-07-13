@@ -1,3 +1,5 @@
 /build/
 /build-llvm/
+/source-tarballs/
+*.7z*
 *.tar.*
