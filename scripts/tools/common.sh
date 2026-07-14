@@ -5,7 +5,7 @@ CROSS_GNU_VER="20260515"
 CROSS_MUSL_URL="https://github.com/Matrix3600"
 CROSS_MUSL_VER="20260616"
 CROSS_CLANG_URL="https://github.com/Matrix3600"
-CROSS_CLANG_VER="20260706"
+CROSS_CLANG_VER="20260717"
 CROSS_CLANG_RESUME="false"
 CROSS_CLANG_LATEST="latest-llvm-builds"
 
@@ -134,19 +134,22 @@ function get_llvm_version()
 	local major="0"
 	local minor="0"
 	local patch="0"
+	local suffix=""
 	while IFS= read -r line <&3
 	do
 		if [ -n "$line" ]; then
-			if [[ $line =~ set\(LLVM_VERSION_MAJOR\ ([0-9]+)\) ]]; then
+			if [[ $line =~ set\(LLVM_VERSION_MAJOR[[:space:]]([0-9]+)\) ]]; then
 				major="${BASH_REMATCH[1]}"
-			elif [[ $line =~ set\(LLVM_VERSION_MINOR\ ([0-9]+)\) ]]; then
+			elif [[ $line =~ set\(LLVM_VERSION_MINOR[[:space:]]([0-9]+)\) ]]; then
 				minor="${BASH_REMATCH[1]}"
-			elif [[ $line =~ set\(LLVM_VERSION_PATCH\ ([0-9]+)\) ]]; then
+			elif [[ $line =~ set\(LLVM_VERSION_PATCH[[:space:]]([0-9]+)\) ]]; then
 				patch="${BASH_REMATCH[1]}"
+			elif [[ $line =~ set\(LLVM_VERSION_SUFFIX[[:space:]]([[:alnum:].-]+)\) ]]; then
+				suffix="${BASH_REMATCH[1]}"
 			fi
 		fi
 	done 3< "$version_file"
-	printf '%s\n' "${major}.${minor}.${patch}"
+	printf '%s\n' "${major}.${minor}.${patch}${suffix}"
 }
 
 
