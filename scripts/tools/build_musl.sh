@@ -29,7 +29,7 @@ if [ ! -f musl/Makefile ]; then
 	src_dir="$CROSS_CLANG_TARGET_SOURCE_DIR"
 	musl_tarname=musl-${MUSL_VER}.tar.gz
 	if [ ! -f "${src_dir}/${musl_tarname}" ]; then
-		show_progress_message "Downloading musl"
+		show_progress_message "Downloading musl ${MUSL_VER}"
 		url="${MUSL_URL}/${musl_tarname}"
 		wget -nv -nc -T 120 --tries=20 "$url"
 		check_sha256 "$musl_tarname" "$MUSL_SHA256"
@@ -43,7 +43,7 @@ if [ ! -f musl/Makefile ]; then
 	pushd "musl" >/dev/null
 	if [ -d "../../patches/musl/${MUSL_VER}" ]; then
 
-		show_progress_message "Patching musl"
+		show_progress_message "Patching musl ${MUSL_VER}"
 
 		find "../../patches/musl/${MUSL_VER}" -type f -name "*.patch" -print0 | \
 			sort -z | \
@@ -56,7 +56,7 @@ if [ ! -f musl/Makefile ]; then
 fi
 
 SYSROOT="$(pwd)/clang-cross/${TARGET}/sysroot"
-CLANG_LIB_DIR="$(pwd)/clang-cross/lib/clang"
+HOST_LIB_DIR="$(pwd)/clang-cross/lib"
 CLANG_ARGS="$(read_target_config "../targets/${TARGET}/config")"
 musl_dir="$(pwd)/musl"
 
@@ -76,7 +76,7 @@ pushd "build-libc"
 if [[ ! -f "config.mak" || \
 		! -f "${SYSROOT}/usr/include/bits/alltypes.h" ]]; then
 
-	show_progress_message "Configuring musl"
+	show_progress_message "Configuring musl ${MUSL_VER}"
 
 	CFLAGS="$CLANG_ARGS"
 	LDFLAGS=""
@@ -86,39 +86,40 @@ if [[ ! -f "config.mak" || \
 		RANLIB="$(get_latest_exec_path llvm-ranlib)"
 		CFLAGS="${CFLAGS} -fuse-ld=lld"
 
+		rt_lib_dir=""
 		if [ "$USE_COMPILER_RT" == true ]; then
-			dest_dir=""
-			pushd "$CLANG_LIB_DIR" >/dev/null
+			CFLAGS="--rtlib=compiler-rt ${CFLAGS}"
+			clang_lib_dir="${HOST_LIB_DIR}/clang"
+			pushd "$clang_lib_dir" >/dev/null
 			for version in *; do
 				if [[ -d $version && $version =~ ^[1-9][0-9]*$ ]]; then
-					dest_dir="${CLANG_LIB_DIR}/${version}/lib/${TARGET}"
+					rt_lib_dir="${clang_lib_dir}/${version}/lib/${TARGET}"
 				fi
 			done
 			popd >/dev/null
-			if [ -n "$dest_dir" ]; then
-				LDFLAGS="-L\"$dest_dir\" ${LDFLAGS}"
-			fi
-			CFLAGS="--rtlib=compiler-rt ${CFLAGS}"
+		else
+			gcc_lib_dir="${HOST_LIB_DIR}/gcc/${TARGET}"
+			pushd "$gcc_lib_dir" >/dev/null
+			for version in *; do
+				if [[ -d $version && $version =~ ^[1-9][0-9.]*$ ]]; then
+					rt_lib_dir="${gcc_lib_dir}/${version}"
+				fi
+			done
+			popd >/dev/null
+		fi
+		if [ -n "$rt_lib_dir" ]; then
+			LDFLAGS="-L\"$rt_lib_dir\" ${LDFLAGS}"
 		fi
 	else
 		CC="${LLVM_PATH}/clang"
 		AR="${LLVM_PATH}/llvm-ar"
 		RANLIB="${LLVM_PATH}/llvm-ranlib"
 	fi
-	libcc=""
 	if [ "$USE_COMPILER_RT" == true ]; then
 		libcc="-lclang_rt.builtins"
+	else
+		libcc="-lgcc -lgcc_eh"
 	fi
-
-	echo "${musl_dir}/configure" --target=$TARGET --disable-wrapper \
-		--prefix="${SYSROOT}/usr" --syslibdir="${SYSROOT}/lib" \
-		--enable-optimize=size \
-		CC="$CC" \
-		AR="$AR" \
-		RANLIB="$RANLIB" \
-		LIBCC="$libcc" \
-		CFLAGS="${CFLAGS}" \
-		LDFLAGS="$LDFLAGS"
 
 	"${musl_dir}/configure" --target=$TARGET --disable-wrapper \
 		--prefix="${SYSROOT}/usr" --syslibdir="${SYSROOT}/lib" \
@@ -137,7 +138,7 @@ fi
 
 if ! $install_headers; then
 
-	show_progress_message "Building musl"
+	show_progress_message "Building musl ${MUSL_VER}"
 
 	make install
 

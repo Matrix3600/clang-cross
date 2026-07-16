@@ -71,18 +71,12 @@ if $install_libstdcxx || ! $use_compiler_rt; then
 	find ${TARGET} -exec chmod a+w {} \;
 
 	cp -a ${TARGET}/lib/gcc clang-cross/lib/
+	rm -rf clang-cross/lib/gcc/${TARGET}/*/{install-tools,plugin}
 	if $install_libstdcxx; then
 		cp -a ${TARGET}/include clang-cross/
+		cp -a ${TARGET}/${TARGET} clang-cross/
+		rm -rf clang-cross/${TARGET}/{bin,debug-root,lib}
 	fi
-	cp -a ${TARGET}/${TARGET} clang-cross/
-	rm -rf clang-cross/lib/gcc/${TARGET}/*/{install-tools,plugin}
-	rm -rf clang-cross/${TARGET}/{bin,debug-root,lib}
-	if ! $install_libstdcxx; then
-		rm -rf clang-cross/${TARGET}/include
-	fi
-	# Do not rebuild musl if we already have it, built by GCC.
-	# Comment out the line below if you want to force a rebuild by Clang.
-	build_musl=false
 fi
 
 if $build_musl; then
