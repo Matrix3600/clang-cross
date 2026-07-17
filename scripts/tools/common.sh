@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 
-CROSS_GNU_URL="https://github.com/cross-tools"
-CROSS_GNU_VER="20260515"
-CROSS_MUSL_URL="https://github.com/Matrix3600"
-CROSS_MUSL_VER="20260616"
+CROSS_GNU_URL="https://github.com/Matrix3600"
+CROSS_GNU_VER="20260717"
 CROSS_CLANG_URL="https://github.com/Matrix3600"
 CROSS_CLANG_VER="20260717"
 CROSS_CLANG_RESUME="false"
