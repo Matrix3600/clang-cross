@@ -24,7 +24,7 @@ install_kernel_headers()
 		s390*)          kernel_arch="s390" ;;
 		sh*)            kernel_arch="sh" ;;
 		*)
-			echo "Target not supported (${TARGET})."
+			echo "[ERROR] Target not supported (${TARGET})." >&2
 			return 1
 		;;
 	esac

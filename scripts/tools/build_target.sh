@@ -62,8 +62,8 @@ if $install_libstdcxx || ! $use_compiler_rt; then
 				url="${CROSS_MUSL_URL}/musl-cross/releases/download/x64-${CROSS_MUSL_VER}/${name}"
 				;;
 			*)
-				echo "Target not supported (${TARGET})."
-				return 1
+				echo "[ERROR] Target not supported (${TARGET})." >&2
+				exit 1
 				;;
 		esac
 		wget -O - -nv -T 120 --tries=20 "$url" | tar xJ
