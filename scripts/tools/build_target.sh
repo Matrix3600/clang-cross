@@ -53,7 +53,19 @@ if $install_libstdcxx || ! $use_compiler_rt; then
 		show_progress_message "Downloading GNU libraries"
 
 		name="linux-x64_${TARGET}.tar.xz"
-		url="${CROSS_GNU_URL}/gnu-cross/releases/download/x64-${CROSS_GNU_VER}/${name}"
+		url=""
+		case $TARGET in
+			*-gnu*)
+				url="${CROSS_GNU_URL}/gnu-cross/releases/download/x64-${CROSS_GNU_VER}/${name}"
+				;;
+			*-musl*)
+				url="${CROSS_MUSL_URL}/musl-cross/releases/download/x64-${CROSS_MUSL_VER}/${name}"
+				;;
+			*)
+				echo "Target not supported (${TARGET})."
+				return 1
+				;;
+		esac
 		wget -O - -nv -T 120 --tries=20 "$url" | tar xJ
 	fi
 	find ${TARGET} -exec chmod a+w {} \;
