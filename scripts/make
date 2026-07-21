@@ -51,8 +51,7 @@ function install_packages()
 		;;
 		macos)
 			brew update
-			brew uninstall python ruby
-			brew install --quiet $packages
+			brew install --quiet --overwrite $packages
 		;;
 	esac
 }
