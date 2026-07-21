@@ -51,7 +51,7 @@ function install_packages()
 		;;
 		macos)
 			brew update
-			brew install --quiet --overwrite $packages
+			brew install --quiet $packages
 		;;
 	esac
 }

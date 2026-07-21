@@ -11,6 +11,7 @@ permissions:
 env:
   TOOLCHAIN_HOST_NAME: macos-x64
   CROSS_CLANG_SOURCE_DIR: source-tarballs
+  HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
 
 jobs:
   pre-download:
