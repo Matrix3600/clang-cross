@@ -2,6 +2,11 @@ name: Release Windows x64, built on Linux ARM64
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to upload to'
+        required: true
+        type: string
   push:
     tags: ['win-x64-*']
 
@@ -164,7 +169,6 @@ jobs:
     permissions:
       contents: write
     needs: [build-targets]
-    if: github.event_name == 'push'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -180,7 +184,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag=${GITHUB_REF#refs/tags/}
+          if [ "${{ github.event_name }}" == push ]; then
+            tag=${GITHUB_REF#refs/tags/}
+          else
+            tag="${{ inputs.tag }}"
+          fi
           if [ "$(gh release view "$tag" 2>&1)" == "release not found" ]; then
             gh release create "$tag" \
               --title="$tag" \
