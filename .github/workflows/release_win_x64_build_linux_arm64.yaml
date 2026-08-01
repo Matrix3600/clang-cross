@@ -193,8 +193,6 @@ jobs:
             gh release create "$tag" \
               --title="$tag" \
               --generate-notes --draft
-          else
-            gh release edit "$tag" --prerelease=false
           fi
           hashfile="@clang-${{ env.TOOLCHAIN_HOST_NAME }}-SHA256SUMS"
           rm -f "$hashfile"
