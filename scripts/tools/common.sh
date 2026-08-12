@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
 CROSS_GNU_URL="https://github.com/Matrix3600"
-CROSS_GNU_VER="20260730"
+CROSS_GNU_VER="20260810"
 CROSS_MUSL_URL="https://github.com/Matrix3600"
-CROSS_MUSL_VER="20260730"
+CROSS_MUSL_VER="20260810"
 CROSS_CLANG_URL="https://github.com/Matrix3600"
-CROSS_CLANG_VER="20260728"
+CROSS_CLANG_VER="20260812"
 CROSS_CLANG_RESUME="false"
 CROSS_CLANG_LATEST="latest-llvm-builds"
 
