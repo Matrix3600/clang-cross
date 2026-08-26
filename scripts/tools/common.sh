@@ -14,7 +14,7 @@ LINUX_SHA256="ae6a3207f12aa4d6cfb0fa793ec9da4a6fcdfdcb57d869d63d6b77e3a8c1423d"
 LINUX_LOONGARCH_URL="https://www.kernel.org/pub/linux/kernel/v5.x/linux-5.19.16.tar.xz"
 LINUX_LOONGARCH_SHA256="a1ebaf667e1059ae2d72aa6374a4d6e2febc0b8ccda6a124687acc2ea961e08d"
 
-MUSL_URL="https://musl.libc.org/releases"
+MUSL_URL="https://musl.libc.org/releases https://sources.buildroot.net/musl"
 MUSL_VER="1.2.6"
 MUSL_SHA256="d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"
 

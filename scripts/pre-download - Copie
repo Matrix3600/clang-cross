@@ -28,10 +28,11 @@ function install_packages()
 
 function download_package()
 {
-	local mirrors="$1"
-	local filename="$2"
-	local sha256="$3"
-	local name="$4"
+	local url="$1"
+	local sha256="$2"
+	local name="$3"
+	local filename
+	filename=$(basename "$url")
 	if [ ! -f "${DEST_DIR}/${filename}" ]; then
 		if [ "$name" != "-" ]; then
 			if [ -z "$name" ]; then
@@ -39,30 +40,9 @@ function download_package()
 			fi
 			show_progress_message "Downloading ${name}"
 		fi
-		local success=false
-		for mirror in $mirrors; do
-			echo "From ${mirror}"
-			local url="${mirror%/}/${filename}"
-			if wget -nv -T 120 --tries=20 -nc --progress=dot:binary -P "$DEST_DIR" "$url" && \
-					check_sha256 "${DEST_DIR}/${filename}" "$sha256" ; then
-				success=true
-				break
-			fi
-		done
-		if ! $success; then
-			return 1
-		fi
+		wget -nv -T 120 --tries=20 -nc --progress=dot:binary -P "$DEST_DIR" "$url"
+		check_sha256 "${DEST_DIR}/${filename}" "$sha256"
 	fi
-}
-
-
-function download_package_url()
-{
-	local url
-	local filename
-	url=$(dirname "$1")
-	filename=$(basename "$1")
-	download_package "$url" "$filename" "$2" "$3"
 }
 
 
@@ -79,8 +59,8 @@ fi
 
 install_packages
 
-download_package_url "$LINUX_URL" "$LINUX_SHA256" "kernel headers"
-download_package_url "$LINUX_LOONGARCH_URL" "$LINUX_LOONGARCH_SHA256" "-"
-download_package "$MUSL_URL" "musl-${MUSL_VER}.tar.gz" "$MUSL_SHA256" "musl"
+download_package "$LINUX_URL" "$LINUX_SHA256" "kernel headers"
+download_package "$LINUX_LOONGARCH_URL" "$LINUX_LOONGARCH_SHA256" "-"
+download_package "${MUSL_URL}/musl-${MUSL_VER}.tar.gz" "$MUSL_SHA256" "musl"
 
 exit 0
