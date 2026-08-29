@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v6
       - name: Download tarballs
         run: |
-          ./scripts/pre-download "$CROSS_CLANG_SOURCE_DIR"
+          scripts/pre-download "$CROSS_CLANG_SOURCE_DIR"
       - name: Upload tarballs
         uses: actions/upload-artifact@v7
         with:
@@ -45,7 +45,7 @@ jobs:
           submodules: true
       - name: Build
         run: |
-          ./scripts/make llvm
+          scripts/make llvm
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
@@ -132,7 +132,7 @@ jobs:
           name: "llvm-clang-${{ env.TOOLCHAIN_HOST_NAME }}"
       - name: Build
         run: |
-          ./scripts/make "${{ matrix.target }}"
+          scripts/make "${{ matrix.target }}"
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
