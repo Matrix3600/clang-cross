@@ -109,7 +109,7 @@ Otherwise you can also publish a release directly.
 
 Or build manually for your machine's architecture:
 ```
-./scripts/make <target>
+scripts/make <target>
 ```
 
 ## License
