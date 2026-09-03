@@ -207,6 +207,44 @@ function install_build_compiler()
 		mkdir build-compiler
 		pushd build-compiler
 		tar -xf "../${tarname}"
+
+		# Workaround for LLVM 23.1.0 bug
+		# https://github.com/llvm/llvm-project/issues/215764
+		show_progress_message "Downloading ICU 70 release"
+		local icu_pkgname
+		local icu_sha256
+		local icu_host
+		local icu_url
+		case $build in
+			linux-x64)
+				icu_url="https://archive.ubuntu.com/ubuntu/pool/main/i/icu"
+				icu_pkgname="libicu70_70.1-2_amd64.deb"
+				icu_sha256="58a154f6307289813da2276f900498ef536ae7c0522d2cf31a3c3c5cf62dfd9a"
+				icu_host="x86_64-linux-gnu"
+				;;
+			linux-arm64)
+				icu_url="https://ports.ubuntu.com/pool/main/i/icu"
+				icu_pkgname="libicu70_70.1-2_arm64.deb"
+				icu_sha256="ac68372cf4a976e6a206858fd9b28c68e49d37d650b9b8653270038a6e7bc174"
+				icu_host="aarch64-linux-gnu"
+				;;
+			*)
+				echo "Build machine not supported (${build})."
+				return 1
+				;;
+		esac
+		wget -nv -nc -T 120 --tries=20 "${icu_url}/${icu_pkgname}"
+		check_sha256 "$icu_pkgname" "$icu_sha256"
+		dpkg-deb -x "$icu_pkgname" "icu"
+		for name in libicudata.so.70 libicudata.so.70.1 \
+				libicui18n.so.70 libicui18n.so.70.1 \
+				libicuuc.so.70 libicuuc.so.70.1 ; do
+			mv "icu/usr/lib/${icu_host}/${name}" "${llvm_name}/lib"
+		done
+		rm -rf "icu"
+		rm "$icu_pkgname"
+		# End of workaround
+
 		mv "$llvm_name" "llvm-${LLVM_VER}"
 		llvm_bin_path="$(pwd)/llvm-${LLVM_VER}/bin"
 		popd
