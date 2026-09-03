@@ -138,7 +138,6 @@ function install_build_compiler()
 		case $module in
 			sysroot) ;;
 			llvm)
-				install_needed=false
 				if is_linux_host "$HOST"; then
 					install_needed=true
 				fi
@@ -170,29 +169,30 @@ function install_build_compiler()
 			return 1
 			;;
 	esac
-	sudo rm -rf build-compiler
-	mkdir build-compiler
-	pushd build-compiler
 
+	sudo rm -rf build-compiler
 	local llvm_bin_path=""
 
 	local tarname="llvm-clang-${build}-${llvm_version}.tar.xz"
-	if [ ! -f "../${tarname}" ]; then
-		url="${CROSS_CLANG_URL}/clang-cross/releases/download/${CROSS_CLANG_LATEST}/${tarname}"
+	if [ ! -f "$tarname" ]; then
+		local url="${CROSS_CLANG_URL}/clang-cross/releases/download/${CROSS_CLANG_LATEST}/${tarname}"
 		if wget -nv -nc -T 120 --tries=20 $options "$url" 2>/dev/null; then
 			show_progress_message "Downloading llvm-clang-cross compiler for ${build}"
 			echo "${url}"
-			mv "$tarname" ..
 		fi
 	fi
-	if [ -f "../${tarname}" ]; then
+	if [ -f "$tarname" ]; then
+		mkdir build-compiler
+		pushd build-compiler
 		tar -xf "../${tarname}"
 		llvm_bin_path="$(pwd)/clang-cross/bin"
-	fi
-
-	if [ -z "$llvm_bin_path" ]; then
+		popd
+	else
+		if [[ $(clang --version 2>/dev/null) =~ clang\ version\ ${LLVM_VER} ]]; then
+			return 0
+		fi
 		local tarname="${llvm_name}.tar.xz"
-		if [ ! -f "../${tarname}" ]; then
+		if [ ! -f "$tarname" ]; then
 			show_progress_message "Downloading LLVM ${LLVM_VER} release"
 			local url="${LLVM_URL}/llvm-project/releases/download/llvmorg-${LLVM_VER}/${tarname}"
 			local options=""
@@ -201,16 +201,18 @@ function install_build_compiler()
 			fi
 			wget -nv -nc -T 120 --tries=20 $options "$url"
 			check_sha256 "$tarname" "$llvm_sha256"
-			mv "$tarname" ..
 		fi
-		show_progress_message "Extracting LLVM"
+
+		show_progress_message "Extracting LLVM ${LLVM_VER} release"
+		mkdir build-compiler
+		pushd build-compiler
 		tar -xf "../${tarname}"
 		mv "$llvm_name" "llvm-${LLVM_VER}"
 		llvm_bin_path="$(pwd)/llvm-${LLVM_VER}/bin"
+		popd
 	fi
 
 	export PATH="${llvm_bin_path}:$PATH"
-	popd
 }
 
 
