@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
 CROSS_GNU_URL="https://github.com/Matrix3600"
-CROSS_GNU_VER="20260730"
+CROSS_GNU_VER="20260830"
 CROSS_MUSL_URL="https://github.com/Matrix3600"
-CROSS_MUSL_VER="20260730"
+CROSS_MUSL_VER="20260830"
 CROSS_CLANG_URL="https://github.com/Matrix3600"
-CROSS_CLANG_VER="20260729"
+CROSS_CLANG_VER="20260830"
 CROSS_CLANG_RESUME="false"
 CROSS_CLANG_LATEST="latest-llvm-builds"
 
@@ -18,15 +18,23 @@ MUSL_URL="https://musl.libc.org/releases https://sources.buildroot.net/musl"
 MUSL_VER="1.2.6"
 MUSL_SHA256="d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"
 
+#
+# LLVM build compilers for canadian builds (make_canadian)
+#
+
 LLVM_URL="https://github.com/llvm"
 LLVM_VER="22.1.8"
+# LLVM-${LLVM_VER}-Linux-X64.tar.xz
 LLVM_X64_SHA256="df0e1ecf16caf3489a272a5eea4eec9b0d82878f6477fa309504f918a0006384"
+# LLVM-${LLVM_VER}-Linux-ARM64.tar.xz
 LLVM_ARM64_SHA256="805efad2bb91cb4967fa569e0881d10c0f69c04461cf671cccbae19f547acc34"
 
 LLVM_MINGW_URL="https://github.com/mstorsjo"
 LLVM_MINGW_VER="20260616"
 LLVM_MINGW_UBNT_VER="22.04"
+# llvm-mingw-${LLVM_MINGW_VER}-msvcrt-ubuntu-${LLVM_MINGW_UBNT_VER}-x86_64.tar.xz
 LLVM_MINGW_X64_SHA256="a1f7968b48ba8d949194d6dee6c76f3cd0f61cba91658599af2c2c834a55ab87"
+# llvm-mingw-${LLVM_MINGW_VER}-ucrt-ubuntu-${LLVM_MINGW_UBNT_VER}-aarch64.tar.xz
 LLVM_MINGW_ARM64_SHA256="e7e5d135d93d3f2a3beaaea633a5b0e66ac75391a53feae654391913dd76102b"
 
 
