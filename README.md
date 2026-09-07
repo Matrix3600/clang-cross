@@ -10,7 +10,7 @@ These [ready-to-use](https://github.com/Matrix3600/clang-cross/releases) toolcha
 - Windows x86-64
 - Windows ARM64
 - macOS ARM64 (Apple Silicon)
-- macOS Intel, Linux RISC-V,... (on request)
+- Linux RISC-V,... (on request)
 
 ## Supported targets
 
