@@ -43,6 +43,7 @@ install_kernel_headers()
 			CPATH="$(dirname "$0")/headers:${CPATH}"
 			export CPATH
 			PATH="$(brew --prefix gnu-sed)/libexec/gnubin:$PATH"
+			PATH="$(brew --prefix make)/libexec/gnubin:$PATH"
 			PATH="$(brew --prefix llvm)/bin:$(brew --prefix lld)/bin:$PATH"
 			export PATH
 		;;
