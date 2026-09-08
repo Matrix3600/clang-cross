@@ -39,6 +39,7 @@ function install_packages()
 				libelf \
 				lld \
 				llvm \
+				make \
 				ninja \
 				xz \
 			"
