@@ -80,7 +80,6 @@ fi
 install_packages
 
 download_package_url "$LINUX_URL" "$LINUX_SHA256" "kernel headers"
-download_package_url "$LINUX_LOONGARCH_URL" "$LINUX_LOONGARCH_SHA256" "-"
 download_package "$MUSL_URL" "musl-${MUSL_VER}.tar.gz" "$MUSL_SHA256" "musl"
 
 exit 0

@@ -86,16 +86,8 @@ fi
 BUILD_DIR="$(pwd)"
 SYSROOT_DIR="$(pwd)/clang-cross/${TARGET}/sysroot"
 
-case ${TARGET%%-*} in
-	loongarch*)
-		url=$LINUX_LOONGARCH_URL
-		sha256=$LINUX_LOONGARCH_SHA256
-		;;
-	*)
-		url=$LINUX_URL
-		sha256=$LINUX_SHA256
-		;;
-esac
+url=$LINUX_URL
+sha256=$LINUX_SHA256
 
 src_dir="$CROSS_CLANG_TARGET_SOURCE_DIR"
 linux_tarname=$(basename "$url")
