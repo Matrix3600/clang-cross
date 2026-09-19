@@ -21,7 +21,7 @@ env:
 jobs:
   pre-download:
     name: Pre-download
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -37,7 +37,7 @@ jobs:
 
   build-sysroot:
     name: Build sysroot
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -59,7 +59,7 @@ jobs:
 
   build-llvm:
     name: Build LLVM
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     needs: [build-sysroot]
     steps:
       - name: Checkout
@@ -84,7 +84,7 @@ jobs:
 
   build-targets:
     name: Build targets
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     needs: [pre-download, build-llvm]
     strategy:
       fail-fast: true
@@ -163,7 +163,7 @@ jobs:
 
   compiler-release:
     name: Compiler release
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     permissions:
       contents: write
     needs: [build-llvm]
@@ -192,7 +192,7 @@ jobs:
 
   release:
     name: Release
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     permissions:
       contents: write
     needs: [build-targets]
