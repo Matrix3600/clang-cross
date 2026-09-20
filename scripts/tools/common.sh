@@ -9,8 +9,8 @@ CROSS_CLANG_VER="20260908"
 CROSS_CLANG_RESUME="false"
 CROSS_CLANG_LATEST="latest-llvm-builds"
 
-LINUX_URL="https://www.kernel.org/pub/linux/kernel/v6.x/linux-6.1.187.tar.xz"
-LINUX_SHA256="1b6e798aeaa708ca670a426ad5a6c86dc2237b8e59e8822876976c383873642b"
+LINUX_URL="https://www.kernel.org/pub/linux/kernel/v6.x/linux-6.1.188.tar.xz"
+LINUX_SHA256="ed4d0acb1307c235230c89efc094e210e6290593f94a7e617f28b1001101a33a"
 
 MUSL_URL="https://musl.libc.org/releases https://sources.buildroot.net/musl"
 MUSL_VER="1.2.6"
