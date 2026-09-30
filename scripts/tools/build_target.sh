@@ -71,7 +71,7 @@ if $install_libstdcxx || ! $use_compiler_rt; then
 	find ${TARGET} -exec chmod a+w {} \;
 
 	cp -a ${TARGET}/lib/gcc clang-cross/lib/
-	rm -rf clang-cross/lib/gcc/${TARGET}/*/{install-tools,plugin}
+	rm -rf clang-cross/lib/gcc/${TARGET}/*/{include*,install-tools,plugin}
 	if $install_libstdcxx; then
 		cp -a ${TARGET}/include clang-cross/
 		cp -a ${TARGET}/${TARGET} clang-cross/
