@@ -86,7 +86,7 @@ function install_packages()
 		qemu_package="qemu-user-binfmt"
 	fi
 
-	local packages="wget xz-utils"
+	local packages="wget xz-utils zstd"
 	local llvm_packages="\
 		build-essential \
 		ca-certificates \
@@ -191,7 +191,7 @@ function install_build_compiler()
 		if [[ $(clang --version 2>/dev/null) =~ clang\ version\ ${LLVM_VER} ]]; then
 			return 0
 		fi
-		local tarname="${llvm_name}.tar.xz"
+		local tarname="${llvm_name}.tar.zst"
 		if [ ! -f "$tarname" ]; then
 			show_progress_message "Downloading LLVM ${LLVM_VER} release"
 			local url="${LLVM_URL}/llvm-project/releases/download/llvmorg-${LLVM_VER}/${tarname}"
@@ -206,7 +206,7 @@ function install_build_compiler()
 		show_progress_message "Extracting LLVM ${LLVM_VER} release"
 		mkdir build-compiler
 		pushd build-compiler
-		tar -xf "../${tarname}"
+		tar --use-compress-program="zstd --memory=1024MB" -xf "../${tarname}"
 
 		# Workaround for LLVM 23.1.0 bug
 		# https://github.com/llvm/llvm-project/issues/215764
