@@ -313,7 +313,7 @@ function build_llvm()
 		local sha256
 		case $build in
 			linux-x64)
-				name="llvm-mingw-${LLVM_MINGW_VER}-msvcrt-ubuntu-${LLVM_MINGW_UBNT_VER}-x86_64"
+				name="llvm-mingw-${LLVM_MINGW_VER}-ucrt-ubuntu-${LLVM_MINGW_UBNT_VER}-x86_64"
 				sha256=$LLVM_MINGW_X64_SHA256
 				;;
 			linux-arm64)
