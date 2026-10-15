@@ -30,6 +30,7 @@ These [ready-to-use](https://github.com/Matrix3600/clang-cross/releases) toolcha
 | i586-unknown-linux-musl        | 6.1.189 | 23.1.3     | 1.2.6  |
 | i686-unknown-linux-gnu         | 6.1.183 | 23.1.3     | 2.44   |
 | i686-unknown-linux-musl        | 6.1.189 | 23.1.3     | 1.2.6  |
+| loongarch32-unknown-linux-gnu  | 7.0.12  | 23.1.3     | 2.44   |
 | loongarch64-unknown-linux-gnu  | 6.1.183 | 23.1.3     | 2.44   |
 | loongarch64-unknown-linux-musl | 6.1.189 | 23.1.3     | 1.2.6  |
 | mips-unknown-linux-gnu         | 6.1.183 | 23.1.3     | 2.44   |
