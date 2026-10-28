@@ -27,14 +27,11 @@ fi
 
 if [ ! -f musl/Makefile ]; then
 	src_dir="$CROSS_CLANG_TARGET_SOURCE_DIR"
-	musl_tarname=musl-${MUSL_VER}.tar.gz
-	if [ ! -f "${src_dir}/${musl_tarname}" ]; then
-		show_progress_message "Downloading musl ${MUSL_VER}"
-		url="${MUSL_URL}/${musl_tarname}"
-		wget -nv -nc -T 120 --tries=20 "$url"
-		check_sha256 "$musl_tarname" "$MUSL_SHA256"
-		mv "$musl_tarname" "${src_dir}/"
-	fi
+	musl_tarname="musl-${MUSL_VER}.tar.gz"
+
+	download_package "$src_dir" \
+		"$MUSL_URL" "$musl_tarname" "$MUSL_SHA256" "musl ${MUSL_VER}"
+
 	rm -rf "musl-${MUSL_VER}"
 	tar -xf "${src_dir}/${musl_tarname}"
 	mv "musl-${MUSL_VER}/" "musl/"

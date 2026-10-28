@@ -9,11 +9,13 @@ CROSS_CLANG_VER="20261020"
 CROSS_CLANG_RESUME="false"
 CROSS_CLANG_LATEST="latest-llvm-builds"
 
-LINUX_URL="https://www.kernel.org/pub/linux/kernel/v6.x/linux-6.1.189.tar.xz"
+LINUX_VER="6.1.189"
+# linux-${version}.tar.xz
 LINUX_SHA256="3ec834a2fefc9a08aac62f993525d7acd10163db6f01d63b4549cbff3f5c9439"
 
 MUSL_URL="https://musl.libc.org/releases https://sources.buildroot.net/musl"
 MUSL_VER="1.2.6"
+# musl-${MUSL_VER}.tar.gz
 MUSL_SHA256="d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"
 
 #
@@ -36,20 +38,68 @@ LLVM_MINGW_X64_SHA256="55064b60b991a1e1e8090b8c2f84e82b22cfe5903d12c159d65064cf5
 LLVM_MINGW_ARM64_SHA256="ca16bb0f4f485876496fa46ad8d353c525eba57d0cf9e9e49ec1738fe4810151"
 
 
+function download_package()
+{
+	local dest_dir="$1"
+	local mirrors="$2"
+	local filename="$3"
+	local sha256="$4"
+	local display_name="$5"
+	if [ ! -f "${dest_dir}/${filename}" ]; then
+		if [ "$display_name" != "-" ]; then
+			if [ -z "$display_name" ]; then
+				display_name=$filename
+			fi
+			show_progress_message "Downloading ${display_name}"
+		fi
+		local success=false
+		for mirror in $mirrors; do
+			echo "From ${mirror}"
+			local url="${mirror%/}/${filename}"
+			if wget -nv -T 120 --tries=5 -nc --progress=dot:binary -P "$dest_dir" "$url" && \
+					check_sha256 "${dest_dir}/${filename}" "$sha256" ; then
+				success=true
+				break
+			fi
+		done
+		if ! $success; then
+			echo "[ERROR] Unable to download ${filename}" >&2
+			return 1
+		fi
+	fi
+}
+
+
 function check_sha256()
 {
-	local FILENAME="$1"
-	local SHA256="$2"
+	local filename="$1"
+	local sha256="$2"
 	local chksum
-	chksum="$(sha256sum "$FILENAME")"
+	chksum="$(sha256sum "$filename")"
 	chksum="${chksum%%[[:space:]]*}"
 
-	if [ "$chksum" != "$SHA256" ]; then
-		echo "[ERROR] Bad SHA256 for ${FILENAME}: ${chksum}, expected ${SHA256}." >&2
+	if [ "$chksum" != "$sha256" ]; then
+		echo "[ERROR] Bad sha256 for ${filename}: ${chksum}, expected ${sha256}." >&2
 		return 1
 	fi
-	# echo "[DEBUG] Correct SHA256 for ${FILENAME} (${chksum})."
+	# echo "[DEBUG] Correct sha256 for ${filename} (${chksum})."
 	return 0
+}
+
+
+function get_mirrors()
+{
+	local package="$1"
+	local version="$2"
+	case $package in
+		linux)
+			case $version in
+				[34567].*)
+					echo "https://cdn.kernel.org/pub/linux/kernel/v${version%%.*}.x"
+					;;
+			esac
+			;;
+	esac
 }
 
 
@@ -78,10 +128,10 @@ function get_build_machine_type()
 
 function get_host_type()
 {
-	local HOST="$1"
+	local host="$1"
 
 	local host_type
-	host_type="$(sed 's/-unknown//g' <<< "$HOST")"
+	host_type="$(sed 's/-unknown//g' <<< "$host")"
 	case $host_type in
 		aarch64-linux-gnu)
 			host_type="linux-arm64" ;;
@@ -100,7 +150,7 @@ function get_host_type()
 
 function get_latest_exec_path
 {
-	local EXEC_NAME="$1"
+	local exec_name="$1"
 
 	# Search latest executable in PATH
 	local exec_path=""
@@ -108,8 +158,8 @@ function get_latest_exec_path
 	for p in $PATH; do
 		unset IFS
 		local version=0
-		for name in ${p}/${EXEC_NAME}*; do
-			if [[ -f $name && $name =~ /${EXEC_NAME}(|-([0-9]+))$ ]]; then
+		for name in ${p}/${exec_name}*; do
+			if [[ -f $name && $name =~ /${exec_name}(|-([0-9]+))$ ]]; then
 				echo "$name" >&2
 				local v=${BASH_REMATCH[2]}
 				if [ -z "$v" ]; then v=1; fi
@@ -126,7 +176,7 @@ function get_latest_exec_path
 		printf '%s\n' "$exec_path"
 		echo "Using $exec_path" >&2
 	else
-		echo "[ERROR] ${EXEC_NAME} not found." >&2
+		echo "[ERROR] ${exec_name} not found." >&2
 		return 1
 	fi
 }
@@ -134,9 +184,9 @@ function get_latest_exec_path
 
 function get_llvm_version()
 {
-	local ROOT_PATH="$1"
-	if [ -z "$ROOT_PATH" ]; then ROOT_PATH="."; fi
-	local version_file="${ROOT_PATH}/llvm/cmake/Modules/LLVMVersion.cmake"
+	local root_path="$1"
+	if [ -z "$root_path" ]; then root_path="."; fi
+	local version_file="${root_path}/llvm/cmake/Modules/LLVMVersion.cmake"
 	local major="0"
 	local minor="0"
 	local patch="0"

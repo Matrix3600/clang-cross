@@ -86,17 +86,15 @@ fi
 BUILD_DIR="$(pwd)"
 SYSROOT_DIR="$(pwd)/clang-cross/${TARGET}/sysroot"
 
-url=$LINUX_URL
+version=$LINUX_VER
 sha256=$LINUX_SHA256
 
 src_dir="$CROSS_CLANG_TARGET_SOURCE_DIR"
-linux_tarname=$(basename "$url")
-if [ ! -f "${src_dir}/${linux_tarname}" ]; then
-	show_progress_message "Downloading kernel headers"
-	wget -nv -nc -T 120 --tries=20 "$url"
-	check_sha256 "$linux_tarname" "$sha256"
-	mv "$linux_tarname" "${src_dir}/"
-fi
+linux_tarname="linux-${version}.tar.xz"
+
+download_package "$src_dir" "$(get_mirrors "linux" "$version")" \
+	"$linux_tarname" "$sha256" "kernel headers ${version}"
+
 name=${linux_tarname%%.tar*}
 rm -rf "${name}"
 tar -xf "${src_dir}/${linux_tarname}"
