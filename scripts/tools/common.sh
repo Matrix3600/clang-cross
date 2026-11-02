@@ -9,9 +9,9 @@ CROSS_CLANG_VER="20261020"
 CROSS_CLANG_RESUME="false"
 CROSS_CLANG_LATEST="latest-llvm-builds"
 
-LINUX_VER="6.1.189"
-# linux-${version}.tar.xz
-LINUX_SHA256="3ec834a2fefc9a08aac62f993525d7acd10163db6f01d63b4549cbff3f5c9439"
+LINUX_VER="6.1.191"
+# linux-${LINUX_VER}.tar.xz
+LINUX_SHA256="02f15b77d213e15607923832ef9382e2414ea90df6c007f15a910e139645c35d"
 
 MUSL_URL="https://musl.libc.org/releases https://sources.buildroot.net/musl"
 MUSL_VER="1.2.6"
